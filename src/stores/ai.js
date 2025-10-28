@@ -105,22 +105,44 @@ export const useAIStore = defineStore('ai', {
           }
         }
         
-        const { data, error } = await supabase
-          .from('ai_conversations')
-          .insert([conversationData])
-          .select()
-        
-        if (error) {
-          console.error('Supabase error:', error)
-          throw error
+        // 尝试保存到数据库
+        try {
+          const { data, error } = await supabase
+            .from('ai_conversations')
+            .insert([conversationData])
+            .select()
+          
+          if (error) {
+            console.warn('Supabase保存失败，使用本地存储:', error.message)
+            // 不抛出错误，而是继续使用本地存储
+          } else {
+            console.log('对话保存成功到数据库:', data)
+            return data
+          }
+        } catch (dbError) {
+          console.warn('数据库连接错误，使用本地存储:', dbError.message)
         }
         
-        console.log('对话保存成功:', data)
-        return data
+        // 使用本地存储作为备选方案
+        try {
+          const localHistory = JSON.parse(localStorage.getItem('ai_conversations') || '[]')
+          localHistory.push({
+            ...conversationData,
+            id: Date.now(),
+            created_at: new Date().toISOString()
+          })
+          localStorage.setItem('ai_conversations', JSON.stringify(localHistory))
+          console.log('对话已保存到本地存储')
+          return { id: Date.now(), ...conversationData }
+        } catch (localError) {
+          console.error('本地存储保存失败:', localError)
+        }
+        
+        // 如果两种方式都失败，仅返回数据对象
+        return { id: Date.now(), ...conversationData }
       } catch (error) {
-        console.error('保存对话失败:', error)
-        this.error = `保存对话失败: ${error.message}`
-        // 即使保存失败，也不影响用户体验
+        console.error('保存对话处理失败:', error)
+        // 不再设置error状态，避免干扰用户体验
         return null
       }
     },
@@ -129,43 +151,77 @@ export const useAIStore = defineStore('ai', {
       try {
         const targetSessionId = sessionId || this.sessionId
         
-        const { data, error } = await supabase
-          .from('ai_conversations')
-          .select(`
-            *,
-            games (
-              name,
-              category
-            )
-          `)
-          .eq('session_id', targetSessionId)
-          .order('created_at', { ascending: true })
-        
-        if (error) {
-          console.error('Supabase error:', error)
-          throw error
+        // 尝试从数据库获取
+        try {
+          const { data, error } = await supabase
+            .from('ai_conversations')
+            .select(`
+              *,
+              games (
+                name,
+                category
+              )
+            `)
+            .eq('session_id', targetSessionId)
+            .order('created_at', { ascending: true })
+          
+          if (!error && data && data.length > 0) {
+            // 转换数据格式以匹配前端需求
+            const conversations = data.map(item => [
+              {
+                type: 'user',
+                content: item.question,
+                timestamp: new Date(item.created_at).getTime()
+              },
+              {
+                type: 'ai',
+                content: item.answer,
+                timestamp: new Date(item.created_at).getTime() + 1000 // AI回答稍晚一点
+              }
+            ]).flat()
+            
+            this.currentConversation = conversations
+            console.log('对话历史从数据库加载成功:', conversations.length, '条消息')
+            return conversations
+          }
+        } catch (dbError) {
+          console.warn('数据库查询错误，尝试从本地存储加载:', dbError.message)
         }
         
-        // 转换数据格式以匹配前端需求
-        const conversations = data.map(item => [
-          {
-            type: 'user',
-            content: item.question,
-            timestamp: new Date(item.created_at).getTime()
-          },
-          {
-            type: 'ai',
-            content: item.answer,
-            timestamp: new Date(item.created_at).getTime() + 1000 // AI回答稍晚一点
-          }
-        ]).flat()
+        // 尝试从本地存储获取
+        try {
+          const localHistory = JSON.parse(localStorage.getItem('ai_conversations') || '[]')
+          const sessionConversations = localHistory
+            .filter(item => item.session_id === targetSessionId)
+            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+          
+          // 转换数据格式
+          const conversations = sessionConversations.map(item => [
+            {
+              type: 'user',
+              content: item.question,
+              timestamp: new Date(item.created_at).getTime()
+            },
+            {
+              type: 'ai',
+              content: item.answer,
+              timestamp: new Date(item.created_at).getTime() + 1000
+            }
+          ]).flat()
+          
+          this.currentConversation = conversations
+          console.log('对话历史从本地存储加载成功:', conversations.length, '条消息')
+          return conversations
+        } catch (localError) {
+          console.error('本地存储读取失败:', localError)
+        }
         
-        this.currentConversation = conversations
-        console.log('对话历史加载成功:', conversations.length, '条消息')
-        return conversations
+        // 如果两种方式都失败，返回空数组
+        this.currentConversation = []
+        return []
       } catch (error) {
-        console.error('获取对话历史失败:', error)
-        this.error = `获取对话历史失败: ${error.message}`
+        console.error('获取对话历史处理失败:', error)
+        // 不再设置error状态，避免干扰用户体验
         return []
       }
     },

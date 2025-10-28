@@ -40,7 +40,18 @@
 
       <!-- 搜索框 -->
       <div class="header-search">
-        <SearchBox />
+        <el-input
+          v-model="searchQuery"
+          placeholder="搜索游戏或攻略..."
+          prefix-icon="el-icon-search"
+          @keyup.enter="handleSearch"
+          size="small"
+          clearable
+        >
+          <template #append>
+            <el-button @click="handleSearch" size="small" type="primary" icon="el-icon-search"></el-button>
+          </template>
+        </el-input>
       </div>
 
       <!-- 用户操作区 -->
@@ -226,11 +237,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
-import SearchBox from './SearchBox.vue'
 import {
   Trophy,
   House,
@@ -257,14 +267,22 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-// 定义事件
-const emit = defineEmits(['toggle-theme', 'toggle-ai-chat'])
+// 定义属性和事件
+const props = defineProps({
+  searchQuery: {
+    type: String,
+    default: ''
+  }
+})
+
+const emit = defineEmits(['toggle-theme', 'toggle-ai-chat', 'update:searchQuery', 'search'])
 
 // 响应式数据
 const isDark = ref(false)
 const isMobile = ref(false)
 const showMobileMenu = ref(false)
 const showNotificationDrawer = ref(false)
+const searchQuery = ref(props.searchQuery)
 const notifications = ref([
   {
     id: 1,
@@ -379,6 +397,23 @@ const handleLogout = async () => {
     ElMessage.error('退出登录失败')
   }
 }
+
+// 搜索相关方法
+const handleSearch = () => {
+  if (searchQuery.value.trim()) {
+    emit('search', searchQuery.value)
+    router.push({ path: '/search', query: { q: searchQuery.value } })
+  }
+}
+
+// 监听searchQuery变化
+watch(searchQuery, (newValue) => {
+  emit('update:searchQuery', newValue)
+})
+
+watch(() => props.searchQuery, (newValue) => {
+  searchQuery.value = newValue
+})
 
 const markAsRead = (notificationId) => {
   const notification = notifications.value.find(n => n.id === notificationId)

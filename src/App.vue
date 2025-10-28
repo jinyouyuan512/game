@@ -1,7 +1,11 @@
 <template>
   <div id="app" :data-theme="currentTheme">
     <!-- 全局头部导航 -->
-    <AppHeader @toggle-theme="toggleTheme" />
+    <AppHeader 
+      @toggle-theme="toggleTheme"
+      v-model:searchQuery="searchQuery"
+      @search="handleSearch"
+    />
 
     <!-- 主内容区域 -->
     <el-main class="app-main">

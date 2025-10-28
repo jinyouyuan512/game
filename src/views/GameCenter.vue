@@ -27,13 +27,12 @@
               clearable
               @change="handleCategoryChange"
             >
-              <el-option label="全部" value="" />
-              <el-option label="RPG" value="RPG" />
-              <el-option label="动作" value="Action" />
-              <el-option label="策略" value="Strategy" />
-              <el-option label="射击" value="Shooter" />
-              <el-option label="模拟" value="Simulation" />
-              <el-option label="竞技" value="Competitive" />
+              <el-option
+                v-for="cat in categories"
+                :key="cat.value"
+                :label="cat.label"
+                :value="cat.value"
+              />
             </el-select>
           </div>
           
@@ -47,24 +46,51 @@
               <el-option label="最新发布" value="created_at" />
               <el-option label="名称排序" value="name" />
               <el-option label="开发商" value="developer" />
+              <el-option label="浏览量" value="views" />
             </el-select>
           </div>
 
           <div class="search-group">
             <el-input
               v-model="searchKeyword"
-              placeholder="搜索游戏名称或开发商..."
+              placeholder="搜索游戏名称、开发商或简介..."
               @keyup.enter="handleSearch"
               @clear="handleSearch"
               clearable
             >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
               <template #append>
-                <el-button @click="handleSearch">
-                  <el-icon><Search /></el-icon>
-                </el-button>
+                <el-button type="primary" @click="handleSearch">搜索</el-button>
               </template>
             </el-input>
           </div>
+        </div>
+        
+        <!-- 筛选结果统计 -->
+        <div v-if="!loading && totalGames > 0" class="filter-stats">
+          <span>共找到 {{ totalGames }} 款游戏</span>
+          <span v-if="selectedCategory" class="filter-tag">
+            分类: {{ categories.find(c => c.value === selectedCategory)?.label }}
+            <el-button size="small" text @click="selectedCategory = ''; handleCategoryChange()">
+              <el-icon><Close /></el-icon>
+            </el-button>
+          </span>
+          <span v-if="searchKeyword" class="filter-tag">
+            搜索: {{ searchKeyword }}
+            <el-button size="small" text @click="searchKeyword = ''; handleSearch()">
+              <el-icon><Close /></el-icon>
+            </el-button>
+          </span>
+          <el-button
+            v-if="selectedCategory || searchKeyword"
+            size="small"
+            plain
+            @click="resetFilters"
+          >
+            重置所有筛选
+          </el-button>
         </div>
       </div>
     </div>
@@ -72,7 +98,33 @@
     <!-- 游戏列表 -->
     <div class="games-content">
       <div class="container">
-        <div class="games-grid" v-loading="gameStore.loading">
+        <!-- 加载状态 -->
+        <div v-if="loading" class="games-grid loading-state">
+          <div v-for="i in 4" :key="i" class="game-card-loading">
+            <el-skeleton animated :rows="1" style="height: 220px; border-radius: 12px;"></el-skeleton>
+            <div class="skeleton-content">
+              <el-skeleton animated :rows="1" style="width: 80%; margin-top: 15px;"></el-skeleton>
+              <el-skeleton animated :rows="2" style="width: 100%; margin-top: 10px;"></el-skeleton>
+              <el-skeleton animated :rows="1" style="width: 60%; margin-top: 10px;"></el-skeleton>
+            </div>
+          </div>
+        </div>
+
+        <!-- 错误状态 -->
+        <div v-else-if="error" class="error-state">
+          <el-alert
+            :title="'加载失败：' + error"
+            type="error"
+            show-icon
+            :closable="false"
+          ></el-alert>
+          <el-button type="primary" @click="loadGames" class="retry-button">
+            重试
+          </el-button>
+        </div>
+
+        <!-- 游戏列表 -->
+        <div v-else-if="filteredGames.length > 0" class="games-grid">
           <div
             v-for="game in filteredGames"
             :key="game.id"
@@ -84,7 +136,12 @@
                 :src="game.cover_image_url || '/game-placeholder.svg'"
                 :alt="game.name"
                 @error="handleImageError"
+                class="game-image"
               />
+              <div class="game-category-badge">{{ game.category || '未分类' }}</div>
+              <div v-if="game.views > 0" class="game-views">
+                <el-icon><View /></el-icon> {{ game.views }}
+              </div>
               <div class="game-overlay">
                 <div class="overlay-content">
                   <el-button type="primary" round>
@@ -96,6 +153,10 @@
                       <el-icon><Document /></el-icon>
                       {{ getStrategyCount(game.id) }} 篇攻略
                     </span>
+                    <span v-if="game.rating" class="stat-item rating">
+                      <el-icon><Star /></el-icon>
+                      {{ game.rating }}分
+                    </span>
                   </div>
                 </div>
               </div>
@@ -103,27 +164,32 @@
             
             <div class="game-info">
               <h3 class="game-title">{{ game.name }}</h3>
-              <p class="game-description">{{ game.description }}</p>
+              <p class="game-description">{{ game.description || '暂无描述' }}</p>
               
               <div class="game-meta">
                 <div class="meta-row">
-                  <el-tag v-if="game.category" type="info" size="small">
-                    {{ game.category }}
-                  </el-tag>
+                  <span class="developer">{{ game.developer || '未知开发商' }}</span>
                   <span class="release-date" v-if="game.release_date">
                     {{ formatDate(game.release_date) }}
                   </span>
                 </div>
                 
                 <div class="meta-row">
-                  <span class="developer">{{ game.developer }}</span>
+                  <div class="game-tags">
+                    <el-tag v-if="game.platform" size="small" effect="plain">
+                      {{ game.platform }}
+                    </el-tag>
+                    <el-tag v-if="game.genre" size="small" effect="plain">
+                      {{ game.genre }}
+                    </el-tag>
+                  </div>
                   <div class="game-actions">
                     <el-button
                       size="small"
                       type="primary"
                       @click.stop="goToGameDetail(game.id)"
                     >
-                      查看攻略
+                      查看详情
                     </el-button>
                   </div>
                 </div>
@@ -133,14 +199,14 @@
         </div>
 
         <!-- 空状态 -->
-        <div v-if="!gameStore.loading && filteredGames.length === 0" class="empty-state">
-          <el-empty description="暂无游戏数据">
+        <div v-else class="empty-state">
+          <el-empty description="暂无符合条件的游戏">
             <el-button type="primary" @click="resetFilters">重置筛选</el-button>
           </el-empty>
         </div>
 
         <!-- 分页 -->
-        <div v-if="filteredGames.length > 0" class="pagination-wrapper">
+        <div v-if="!loading && totalGames > pageSize" class="pagination-wrapper">
           <el-pagination
             v-model:current-page="currentPage"
             v-model:page-size="pageSize"
@@ -160,7 +226,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useGameStore } from '../stores/game'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Search, View, Document } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
@@ -175,126 +242,170 @@ const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(12)
 
-// 计算属性
-const filteredGames = computed(() => {
-  let games = [...gameStore.games]
-  
-  // 分类筛选
-  if (selectedCategory.value) {
-    games = games.filter(game => game.category === selectedCategory.value)
-  }
-  
-  // 搜索筛选
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    games = games.filter(game => 
-      game.name.toLowerCase().includes(keyword) ||
-      game.developer.toLowerCase().includes(keyword) ||
-      (game.description && game.description.toLowerCase().includes(keyword))
-    )
-  }
-  
-  // 排序
-  games.sort((a, b) => {
-    switch (sortBy.value) {
-      case 'name':
-        return a.name.localeCompare(b.name)
-      case 'developer':
-        return a.developer.localeCompare(b.developer)
-      case 'created_at':
-      default:
-        return new Date(b.created_at) - new Date(a.created_at)
-    }
-  })
-  
-  // 分页
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return games.slice(start, end)
-})
+// 从store获取数据和状态
+const filteredGames = computed(() => gameStore.games)
+const totalGames = computed(() => gameStore.gamesTotal)
+const loading = computed(() => gameStore.gamesLoading)
+const error = computed(() => gameStore.gamesError)
 
-const totalGames = computed(() => {
-  let games = [...gameStore.games]
-  
-  if (selectedCategory.value) {
-    games = games.filter(game => game.category === selectedCategory.value)
-  }
-  
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    games = games.filter(game => 
-      game.name.toLowerCase().includes(keyword) ||
-      game.developer.toLowerCase().includes(keyword) ||
-      (game.description && game.description.toLowerCase().includes(keyword))
-    )
-  }
-  
-  return games.length
-})
+// 分类列表
+const categories = computed(() => [
+  { label: '全部', value: '' },
+  { label: 'RPG', value: 'RPG' },
+  { label: '动作', value: 'Action' },
+  { label: '策略', value: 'Strategy' },
+  { label: '射击', value: 'Shooter' },
+  { label: '模拟', value: 'Simulation' },
+  { label: '竞技', value: 'Competitive' }
+])
 
 // 方法
+/**
+ * 加载游戏数据
+ */
+const loadGames = async () => {
+  try {
+    const filters = {
+      category: selectedCategory.value || undefined,
+      sortBy: sortBy.value,
+      sortOrder: 'desc', // 默认降序
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      q: searchKeyword.value.trim() || undefined
+    }
+    
+    await gameStore.fetchGames(filters)
+  } catch (err) {
+    console.error('加载游戏失败:', err)
+    ElMessage.error('加载游戏失败，请稍后重试')
+  }
+}
+
+/**
+ * 处理分类变更
+ */
 const handleCategoryChange = () => {
   currentPage.value = 1
+  loadGames()
 }
 
+/**
+ * 处理排序变更
+ */
 const handleSortChange = () => {
   currentPage.value = 1
+  loadGames()
 }
 
+/**
+ * 处理搜索
+ */
 const handleSearch = () => {
   currentPage.value = 1
+  
+  // 如果搜索关键词较长，使用高级搜索页面
+  if (searchKeyword.value.trim().length > 3) {
+    // 可以选择跳转到搜索结果页面
+    // router.push({ name: 'SearchResults', query: { q: searchKeyword.value.trim() } })
+    // 或者直接在这里加载搜索结果
+    loadGames()
+  } else {
+    loadGames()
+  }
 }
 
+/**
+ * 处理页大小变更
+ */
 const handleSizeChange = (val) => {
   pageSize.value = val
   currentPage.value = 1
+  loadGames()
 }
 
+/**
+ * 处理页码变更
+ */
 const handleCurrentChange = (val) => {
   currentPage.value = val
+  loadGames()
+  
   // 滚动到顶部
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+/**
+ * 重置筛选条件
+ */
 const resetFilters = () => {
   selectedCategory.value = ''
   sortBy.value = 'created_at'
   searchKeyword.value = ''
   currentPage.value = 1
+  loadGames()
 }
 
+/**
+ * 跳转到游戏详情页
+ */
 const goToGameDetail = (gameId) => {
   router.push(`/games/${gameId}`)
 }
 
+/**
+ * 获取游戏攻略数量
+ */
 const getStrategyCount = (gameId) => {
-  // 这里可以从store中获取该游戏的攻略数量
-  // 暂时返回随机数作为演示
-  return Math.floor(Math.random() * 20) + 1
+  // 从store中获取攻略数量
+  if (gameStore.strategyCountMap && gameStore.strategyCountMap[gameId]) {
+    return gameStore.strategyCountMap[gameId]
+  }
+  return 0
 }
 
+/**
+ * 处理图片加载错误
+ */
 const handleImageError = (event) => {
   event.target.src = '/game-placeholder.svg'
 }
 
+/**
+ * 格式化日期
+ */
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('zh-CN')
+  try {
+    if (!dateString) return '未发布'
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return '未发布'
+    }
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  } catch (err) {
+    return '未发布'
+  }
 }
 
 // 监听路由参数变化
 watch(() => route.query, (newQuery) => {
-  if (newQuery.category) {
-    selectedCategory.value = newQuery.category
+  if (newQuery.category !== undefined) {
+    selectedCategory.value = newQuery.category || ''
   }
-  if (newQuery.search) {
-    searchKeyword.value = newQuery.search
+  if (newQuery.search !== undefined) {
+    searchKeyword.value = newQuery.search || ''
   }
+  // 当路由参数变化时重新加载数据
+  loadGames()
 }, { immediate: true })
 
+// 组件挂载时获取数据
 onMounted(async () => {
-  await gameStore.fetchGames()
-})
-</script>
+  await loadGames()
+})</script>
 
 <style scoped>
 .game-center {
@@ -354,6 +465,7 @@ onMounted(async () => {
   align-items: center;
   gap: 30px;
   flex-wrap: wrap;
+  margin-bottom: 20px;
 }
 
 .filter-group {
@@ -373,6 +485,43 @@ onMounted(async () => {
   min-width: 300px;
 }
 
+.search-group :deep(.el-input__wrapper) {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.search-group :deep(.el-input__prefix) {
+  color: #00d4ff;
+}
+
+/* 筛选结果统计 */
+.filter-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 20px;
+  background: rgba(0, 212, 255, 0.05);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 212, 255, 0.1);
+}
+
+.filter-stats span {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+}
+
+.filter-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 20px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  font-size: 13px;
+  color: #00d4ff;
+}
+
 .games-content {
   padding: 60px 0;
 }
@@ -384,6 +533,38 @@ onMounted(async () => {
   margin-bottom: 60px;
 }
 
+/* 加载状态 */
+.loading-state {
+  opacity: 0.7;
+}
+
+.game-card-loading {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  overflow: hidden;
+  padding-bottom: 25px;
+}
+
+.skeleton-content {
+  padding: 0 25px;
+}
+
+/* 错误状态 */
+.error-state {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  border-radius: 15px;
+  padding: 40px;
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.retry-button {
+  margin-top: 20px;
+}
+
+/* 游戏卡片 */
 .game-card {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -391,6 +572,7 @@ onMounted(async () => {
   overflow: hidden;
   transition: all 0.3s ease;
   cursor: pointer;
+  position: relative;
 }
 
 .game-card:hover {
@@ -405,15 +587,45 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-.game-cover img {
+.game-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s ease;
 }
 
-.game-card:hover .game-cover img {
+.game-card:hover .game-image {
   transform: scale(1.1);
+}
+
+/* 分类标签 */
+.game-category-badge {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: rgba(0, 212, 255, 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 10;
+}
+
+/* 浏览量 */
+.game-views {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
 }
 
 .game-overlay {
@@ -436,18 +648,26 @@ onMounted(async () => {
 
 .overlay-content {
   text-align: center;
+  color: #fff;
 }
 
 .game-stats {
   margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
 }
 
 .stat-item {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
   color: rgba(255, 255, 255, 0.8);
   font-size: 14px;
+}
+
+.stat-item.rating {
+  color: #ffd700;
 }
 
 .game-info {
@@ -459,6 +679,10 @@ onMounted(async () => {
   margin-bottom: 12px;
   color: #00d4ff;
   font-weight: bold;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .game-description {
@@ -481,6 +705,8 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .release-date {
@@ -491,6 +717,27 @@ onMounted(async () => {
 .developer {
   color: rgba(255, 255, 255, 0.6);
   font-size: 14px;
+  flex: 1;
+}
+
+/* 游戏标签 */
+.game-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.game-tags :deep(.el-tag) {
+  font-size: 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.game-tags :deep(.el-tag):hover {
+  background-color: rgba(0, 212, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
 }
 
 .game-actions {

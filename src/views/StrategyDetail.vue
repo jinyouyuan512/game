@@ -261,13 +261,8 @@ const fetchStrategy = async () => {
     const strategyId = route.params.id
     
     await gameStore.fetchStrategy(strategyId)
+    // 直接使用gameStore中的策略数据
     strategy.value = gameStore.strategies.find(s => s.id === parseInt(strategyId))
-    
-    if (!strategy.value) {
-      // 使用模拟数据
-      strategy.value = getMockStrategyData(strategyId)
-      ElMessage.warning('使用模拟攻略数据')
-    }
     
     // 获取相关攻略
     if (strategy.value.game_id) {
@@ -277,20 +272,18 @@ const fetchStrategy = async () => {
           .filter(s => s.id !== strategy.value.id)
           .slice(0, 5)
       } catch (error) {
-        console.error('获取相关攻略失败，使用模拟数据:', error)
-        // 生成模拟相关攻略
-        relatedStrategies.value = generateMockRelatedStrategies(strategyId)
+        console.error('获取相关攻略失败:', error)
+        // 不使用模拟数据，保持相关攻略为空数组
+        relatedStrategies.value = []
       }
     }
     
     // 生成目录
     generateTOC()
   } catch (error) {
-    console.error('获取攻略失败，使用模拟数据:', error)
-    ElMessage.warning('使用模拟攻略数据')
-    strategy.value = getMockStrategyData(route.params.id)
-    relatedStrategies.value = generateMockRelatedStrategies(route.params.id)
-    generateTOC()
+    console.error('获取攻略失败:', error)
+    ElMessage.error('获取攻略数据失败，请稍后重试')
+    // 不使用模拟数据，让用户知道数据加载失败
   } finally {
     loading.value = false
   }

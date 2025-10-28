@@ -262,16 +262,19 @@ const fetchGameDetail = async () => {
   try {
     const response = await apiClient.get(`/api/games/${gameId.value}`)
     
-    if (response.data) {
-      game.value = response.data
+    // 正确处理API响应 - 直接使用response，因为apiClient已经返回了解析后的数据
+    if (response && response.id) {  // 检查是否是有效的游戏对象
+      game.value = response
+      console.log('成功获取游戏详情:', game.value.name)
     } else {
-      // 使用模拟数据
-      game.value = getMockGameData()
+      console.error('API返回的数据无效或为空')
+      // 不使用模拟数据，显示错误信息
+      ElMessage.error('获取游戏详情失败，数据格式错误')
     }
   } catch (error) {
-    console.error('获取游戏详情失败，使用模拟数据:', error)
-    ElMessage.warning('使用模拟游戏数据')
-    game.value = getMockGameData()
+    console.error('获取游戏详情失败:', error)
+    ElMessage.error('获取游戏详情失败，请稍后重试')
+    // 不使用模拟数据
   }
 }
 
@@ -313,21 +316,27 @@ const fetchStrategies = async () => {
   try {
     const response = await apiClient.get(`/api/strategies?game_id=${gameId.value}&status=published&sort=${sortBy.value}&page=${currentPage.value}&limit=${pageSize.value}`)
     
-    if (response.data && response.data.strategies && response.data.strategies.length > 0) {
+    // 根据服务器返回的数据格式正确处理
+    if (response && Array.isArray(response)) {
+      // 如果直接返回的是攻略数组
+      strategies.value = response
+      totalStrategies.value = response.length
+    } else if (response && response.data && response.data.strategies) {
+      // 如果返回的是包含strategies数组的对象
       strategies.value = response.data.strategies
-      totalStrategies.value = response.data.total || 0
+      totalStrategies.value = response.data.total || response.data.strategies.length
     } else {
-      // 使用模拟数据
-      const mockStrategies = getMockStrategies()
-      strategies.value = mockStrategies
-      totalStrategies.value = mockStrategies.length
+      console.log('该游戏暂无攻略或返回数据格式不同')
+      strategies.value = []
+      totalStrategies.value = 0
     }
+    
+    console.log(`成功获取${strategies.value.length}条攻略`)
   } catch (error) {
-    console.error('获取攻略列表失败，使用模拟数据:', error)
-    ElMessage.warning('使用模拟攻略数据')
-    const mockStrategies = getMockStrategies()
-    strategies.value = mockStrategies
-    totalStrategies.value = mockStrategies.length
+    console.error('获取攻略列表失败:', error)
+    ElMessage.error('获取攻略列表失败，请稍后重试')
+    strategies.value = []
+    totalStrategies.value = 0
   } finally {
     strategiesLoading.value = false
   }
@@ -395,18 +404,25 @@ const fetchRelatedGames = async () => {
   try {
     const response = await apiClient.get(`/api/games?category=${game.value.category}&limit=6`)
     
-    // 过滤掉当前游戏
-    const filteredGames = (response.data || []).filter(g => g.id !== game.value.id)
-    
-    if (filteredGames.length > 0) {
-      relatedGames.value = filteredGames
-    } else {
-      // 使用模拟数据
-      relatedGames.value = getMockRelatedGames()
+    // 根据服务器返回的数据格式正确处理
+    let gamesToFilter = []
+    if (Array.isArray(response)) {
+      // 如果直接返回的是游戏数组
+      gamesToFilter = response
+    } else if (response && response.data && Array.isArray(response.data)) {
+      // 如果返回的是包含data数组的对象
+      gamesToFilter = response.data
     }
+    
+    // 过滤掉当前游戏
+    const filteredGames = gamesToFilter.filter(g => g.id !== game.value.id)
+    
+    relatedGames.value = filteredGames
+    console.log(`成功获取${relatedGames.value.length}个相关游戏`)
   } catch (error) {
-    console.error('获取相关游戏失败，使用模拟数据:', error)
-    relatedGames.value = getMockRelatedGames()
+    console.error('获取相关游戏失败:', error)
+    ElMessage.error('获取相关游戏失败，请稍后重试')
+    relatedGames.value = []
   } finally {
     relatedGamesLoading.value = false
   }

@@ -1,6 +1,5 @@
-// API客户端配置
-// 在开发环境中使用空字符串（通过Vite代理），在生产环境中使用环境变量或默认URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+// 本地API客户端
+const API_BASE_URL = '' // 使用空字符串，因为我们已经在Vite配置中设置了代理
 
 // 测试API连接
 export const testApiConnection = async () => {

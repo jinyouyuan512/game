@@ -126,10 +126,10 @@ const routes = [
     component: () => import('../views/AITest.vue')
   },
   {
-    path: '/search',
-    name: 'SearchResults',
-    component: () => import('../views/SearchResults.vue')
-  },
+      path: '/search',
+      name: 'search',
+      component: () => import('../views/SearchResult.vue')
+    },
   {
     path: '/simple-search',
     name: 'SimpleSearch',

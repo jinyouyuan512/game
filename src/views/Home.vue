@@ -12,11 +12,7 @@
           结合人工智能的游戏攻略平台，为您提供精准、即时的游戏问题解答
         </p>
         <div class="hero-actions">
-          <el-button type="primary" size="large" @click="showAIDemo">
-            <el-icon><Robot /></el-icon>
-            体验AI助手
-          </el-button>
-          <el-button size="large" @click="scrollToGames">
+          <el-button type="primary" size="large" @click="scrollToGames">
             <el-icon><GamePad /></el-icon>
             浏览游戏
           </el-button>
@@ -44,49 +40,7 @@
       </div>
     </section>
 
-    <!-- AI功能演示区 -->
-    <section class="ai-demo-section">
-      <div class="container">
-        <h2 class="section-title">AI助手功能演示</h2>
-        <div class="demo-grid">
-          <div class="demo-card">
-            <div class="demo-icon">
-              <el-icon><MessageBox /></el-icon>
-            </div>
-            <h3>智能问答</h3>
-            <p>基于攻略内容的精准问答，快速解决游戏中的具体问题</p>
-            <div class="demo-example">
-              <div class="question">"原神角色培养优先级？"</div>
-              <div class="answer">AI会基于攻略内容给出详细的角色培养建议</div>
-            </div>
-          </div>
-          
-          <div class="demo-card">
-            <div class="demo-icon">
-              <el-icon><Document /></el-icon>
-            </div>
-            <h3>攻略摘要</h3>
-            <p>自动生成攻略关键点摘要，快速了解内容要点</p>
-            <div class="demo-example">
-              <div class="question">长篇攻略自动摘要</div>
-              <div class="answer">3-5行关键点总结，节省阅读时间</div>
-            </div>
-          </div>
-          
-          <div class="demo-card">
-            <div class="demo-icon">
-              <el-icon><Search /></el-icon>
-            </div>
-            <h3>上下文理解</h3>
-            <p>支持追问和澄清，保持对话的连贯性</p>
-            <div class="demo-example">
-              <div class="question">"具体在哪里采集？"</div>
-              <div class="answer">AI理解上下文，给出精确的位置信息</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+
 
     <!-- 游戏列表 -->
     <section class="games-section" ref="gamesSection">
@@ -180,11 +134,7 @@ const latestStrategies = computed(() => {
   return gameStore.strategies.slice(0, 6)
 })
 
-const showAIDemo = () => {
-  // 触发AI聊天窗口显示
-  const event = new CustomEvent('show-ai-chat')
-  window.dispatchEvent(event)
-}
+
 
 const scrollToGames = () => {
   gamesSection.value?.scrollIntoView({ behavior: 'smooth' })
@@ -223,7 +173,10 @@ onMounted(async () => {
   await gameStore.fetchGames()
   // 获取一些最新攻略用于首页展示
   if (gameStore.games.length > 0) {
-    await gameStore.fetchStrategiesByGame(gameStore.games[0].id)
+    await gameStore.fetchGameStrategies(gameStore.games[0].id)
+  } else {
+    // 如果没有游戏，获取一些攻略
+    await gameStore.fetchStrategies()
   }
 })
 </script>
