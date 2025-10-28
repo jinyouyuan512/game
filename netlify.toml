@@ -3,7 +3,7 @@
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20.19.0"
 
 # 配置Netlify重定向规则，解决单页应用的路由问题
 [[redirects]]
