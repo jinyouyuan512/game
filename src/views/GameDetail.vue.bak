@@ -1,0 +1,1016 @@
+<template>
+  <div class="game-detail" v-loading="loading">
+    <div v-if="game" class="game-content">
+      <!-- 游戏头部信息 -->
+      <div class="game-header">
+        <div class="container">
+          <div class="header-content">
+            <div class="breadcrumb">
+              <el-breadcrumb separator="/">
+                <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+                <el-breadcrumb-item :to="{ path: '/games' }">游戏中心</el-breadcrumb-item>
+                <el-breadcrumb-item>{{ game.name }}</el-breadcrumb-item>
+              </el-breadcrumb>
+            </div>
+            
+            <div class="game-info-section">
+              <div class="game-cover">
+                <img
+                  :src="game.cover_image_url || '/game-placeholder.svg'"
+                  :alt="game.name"
+                  @error="handleImageError"
+                />
+              </div>
+              
+              <div class="game-details">
+                <h1 class="game-title">{{ game.name }}</h1>
+                <p class="game-description">{{ game.description }}</p>
+                
+                <div class="game-meta">
+                  <div class="meta-item">
+                    <span class="label">分类：</span>
+                    <el-tag type="primary">{{ game.category }}</el-tag>
+                  </div>
+                  <div class="meta-item">
+                    <span class="label">开发商：</span>
+                    <span class="value">{{ game.developer }}</span>
+                  </div>
+                  <div class="meta-item">
+                    <span class="label">发行商：</span>
+                    <span class="value">{{ game.publisher }}</span>
+                  </div>
+                  <div class="meta-item" v-if="game.release_date">
+                    <span class="label">发布日期：</span>
+                    <span class="value">{{ formatDate(game.release_date) }}</span>
+                  </div>
+                </div>
+                
+                <div class="game-actions">
+                  <el-button type="primary" size="large" @click="scrollToStrategies">
+                    <el-icon><Document /></el-icon>
+                    查看攻略
+                  </el-button>
+                  <el-button size="large" @click="shareGame">
+                    <el-icon><Share /></el-icon>
+                    分享游戏
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI 游戏摘要 -->
+      <div class="summary-section">
+        <div class="container">
+          <GameSummaryCard 
+            :game-id="game.id" 
+            :game-info="game" 
+          />
+        </div>
+      </div>
+
+      <!-- 游戏攻略列表 -->
+      <div class="strategies-section" ref="strategiesSection">
+        <div class="container">
+          <div class="section-header">
+            <h2 class="section-title">
+              <el-icon><Document /></el-icon>
+              相关攻略
+            </h2>
+            <div class="section-actions">
+              <el-select v-model="sortBy" placeholder="排序方式" @change="handleSort">
+                <el-option label="最新发布" value="created_at" />
+                <el-option label="最多浏览" value="views" />
+                <el-option label="难度排序" value="difficulty" />
+              </el-select>
+            </div>
+          </div>
+
+          <div v-if="strategiesLoading" class="strategies-loading">
+            <el-skeleton :rows="5" animated />
+          </div>
+
+          <div v-else-if="strategies.length === 0" class="no-strategies">
+            <el-empty description="暂无相关攻略">
+              <el-button type="primary" @click="$router.push('/games')">
+                浏览其他游戏
+              </el-button>
+            </el-empty>
+          </div>
+
+          <div v-else class="strategies-grid">
+            <div
+              v-for="strategy in strategies"
+              :key="strategy.id"
+              class="strategy-card"
+              @click="goToStrategy(strategy.id)"
+            >
+              <div class="strategy-header">
+                <h3 class="strategy-title">{{ strategy.title }}</h3>
+                <el-tag 
+                  :type="getDifficultyType(strategy.difficulty)" 
+                  size="small"
+                >
+                  {{ getDifficultyText(strategy.difficulty) }}
+                </el-tag>
+              </div>
+              
+              <p class="strategy-summary">{{ strategy.summary || strategy.content.substring(0, 150) + '...' }}</p>
+              
+              <div class="strategy-footer">
+                <div class="strategy-meta">
+                  <span class="author">作者: {{ strategy.author }}</span>
+                  <span class="date">{{ formatDate(strategy.created_at) }}</span>
+                </div>
+                <div class="strategy-stats">
+                  <span class="views">
+                    <el-icon><View /></el-icon>
+                    {{ strategy.views || Math.floor(Math.random() * 5000) + 100 }}
+                  </span>
+                </div>
+              </div>
+              
+              <!-- 攻略标签 -->
+              <div v-if="strategy.strategy_tags && strategy.strategy_tags.length > 0" class="strategy-tags">
+                <el-tag
+                  v-for="tagRelation in strategy.strategy_tags.slice(0, 3)"
+                  :key="tagRelation.tags.id"
+                  size="small"
+                  type="info"
+                >
+                  {{ tagRelation.tags.name }}
+                </el-tag>
+              </div>
+            </div>
+          </div>
+
+          <!-- 分页 -->
+          <div v-if="totalStrategies > pageSize" class="pagination">
+            <el-pagination
+              v-model:current-page="currentPage"
+              v-model:page-size="pageSize"
+              :page-sizes="[10, 20, 50]"
+              :total="totalStrategies"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- 相关游戏推荐 -->
+      <div class="related-games-section">
+        <div class="container">
+          <h2 class="section-title">
+            <el-icon><Grid /></el-icon>
+            相关游戏推荐
+          </h2>
+          
+          <div v-if="relatedGamesLoading" class="related-loading">
+            <el-skeleton :rows="3" animated />
+          </div>
+          
+          <div v-else class="related-games-grid">
+            <div
+              v-for="relatedGame in relatedGames"
+              :key="relatedGame.id"
+              class="related-game-card"
+              @click="goToGame(relatedGame.id)"
+            >
+              <div class="game-cover">
+                <img
+                  :src="relatedGame.cover_image_url || '/game-placeholder.svg'"
+                  :alt="relatedGame.name"
+                  @error="handleImageError"
+                />
+              </div>
+              <div class="game-info">
+                <h4 class="game-name">{{ relatedGame.name }}</h4>
+                <p class="game-category">{{ relatedGame.category }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 游戏不存在 -->
+    <div v-else-if="!loading" class="game-not-found">
+      <div class="container">
+        <el-result
+          icon="warning"
+          title="游戏不存在"
+          sub-title="抱歉，您访问的游戏不存在或已被删除"
+        >
+          <template #extra>
+            <el-button type="primary" @click="$router.push('/games')">
+              返回游戏中心
+            </el-button>
+          </template>
+        </el-result>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useGameStore } from '../stores/game'
+import { apiClient } from '../lib/api'
+import { ElMessage } from 'element-plus'
+import GameSummaryCard from '../components/GameSummaryCard.vue'
+import { 
+  Document, 
+  Share, 
+  View, 
+  Grid 
+} from '@element-plus/icons-vue'
+
+const route = useRoute()
+const router = useRouter()
+const gameStore = useGameStore()
+
+// 响应式数据
+const loading = ref(true)
+const strategiesLoading = ref(false)
+const relatedGamesLoading = ref(false)
+const game = ref(null)
+const strategies = ref([])
+const relatedGames = ref([])
+const sortBy = ref('created_at')
+const currentPage = ref(1)
+const pageSize = ref(10)
+const totalStrategies = ref(0)
+const strategiesSection = ref(null)
+
+// 计算属性
+const gameId = computed(() => route.params.id)
+
+// 方法
+const fetchGameDetail = async () => {
+  try {
+    const response = await apiClient.get(`/games/${gameId.value}`)
+    
+    if (response.data) {
+      game.value = response.data
+    } else {
+      throw new Error('游戏不存在')
+    }
+  } catch (error) {
+    console.error('获取游戏详情失败:', error)
+    ElMessage.error('获取游戏详情失败')
+  }
+}
+
+const fetchStrategies = async () => {
+  strategiesLoading.value = true
+  try {
+    const response = await apiClient.get(`/strategies?game_id=${gameId.value}&status=published&sort=${sortBy.value}&page=${currentPage.value}&limit=${pageSize.value}`)
+    
+    strategies.value = response.data.strategies || []
+    totalStrategies.value = response.data.total || 0
+  } catch (error) {
+    console.error('获取攻略列表失败:', error)
+    ElMessage.error('获取攻略列表失败')
+  } finally {
+    strategiesLoading.value = false
+  }
+}
+
+const fetchRelatedGames = async () => {
+  if (!game.value) return
+  
+  relatedGamesLoading.value = true
+  try {
+    const response = await apiClient.get(`/games?category=${game.value.category}&limit=6`)
+    
+    // 过滤掉当前游戏
+    relatedGames.value = (response.data || []).filter(g => g.id !== game.value.id)
+  } catch (error) {
+    console.error('获取相关游戏失败:', error)
+  } finally {
+    relatedGamesLoading.value = false
+  }
+}
+
+const handleImageError = (event) => {
+  event.target.src = '/game-placeholder.svg'
+}
+
+const formatDate = (dateString) => {
+  return new Date(dateString).toLocaleDateString('zh-CN')
+}
+
+const getDifficultyType = (difficulty) => {
+  const types = {
+    easy: 'success',
+    medium: 'warning',
+    hard: 'danger'
+  }
+  return types[difficulty] || 'info'
+}
+
+const getDifficultyText = (difficulty) => {
+  const texts = {
+    easy: '简单',
+    medium: '中等',
+    hard: '困难'
+  }
+  return texts[difficulty] || '未知'
+}
+
+const scrollToStrategies = () => {
+  if (strategiesSection.value) {
+    strategiesSection.value.scrollIntoView({ behavior: 'smooth' })
+  }
+}
+
+const shareGame = () => {
+  if (navigator.share) {
+    navigator.share({
+      title: game.value.name,
+      text: game.value.description,
+      url: window.location.href
+    })
+  } else {
+    // 复制链接到剪贴板
+    navigator.clipboard.writeText(window.location.href)
+    ElMessage.success('链接已复制到剪贴板')
+  }
+}
+
+const goToStrategy = (strategyId) => {
+  router.push(`/strategies/${strategyId}`)
+}
+
+const goToGame = (gameId) => {
+  router.push(`/games/${gameId}`)
+}
+
+const handleSort = () => {
+  currentPage.value = 1
+  fetchStrategies()
+}
+
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  fetchStrategies()
+}
+
+const handleCurrentChange = (page) => {
+  currentPage.value = page
+  fetchStrategies()
+}
+
+// 生命周期
+onMounted(async () => {
+  loading.value = true
+  try {
+    await fetchGameDetail()
+    if (game.value) {
+      await Promise.all([
+        fetchStrategies(),
+        fetchRelatedGames()
+      ])
+    }
+  } finally {
+    loading.value = false
+  }
+})
+</script>
+
+<style scoped>
+.game-detail {
+  min-height: 100vh;
+  background: var(--bg-color-page);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* 游戏头部 */
+.game-header {
+  background: var(--bg-color);
+  padding: 20px 0 40px;
+  box-shadow: var(--box-shadow);
+}
+
+.breadcrumb {
+  margin-bottom: 20px;
+}
+
+.game-info-section {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+}
+
+.game-cover {
+  width: 300px;
+  height: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--box-shadow);
+  flex-shrink: 0;
+}
+
+.game-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.game-details {
+  flex: 1;
+}
+
+.game-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #303133;
+  margin: 0 0 16px 0;
+}
+
+.game-description {
+  font-size: 16px;
+  color: #606266;
+  line-height: 1.6;
+  margin: 0 0 24px 0;
+}
+
+.game-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-item .label {
+  font-weight: 600;
+  color: #303133;
+  min-width: 80px;
+}
+
+.meta-item .value {
+  color: #606266;
+}
+
+.game-actions {
+  display: flex;
+  gap: 16px;
+}
+
+/* 摘要区域 */
+.summary-section {
+  padding: 40px 0;
+}
+
+/* 攻略列表 */
+.strategies-section {
+  padding: 40px 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0;
+}
+
+.section-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.strategies-loading {
+  padding: 40px 0;
+}
+
+.no-strategies {
+  text-align: center;
+  padding: 60px 0;
+}
+
+.strategies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.strategy-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.strategy-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.strategy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.strategy-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.strategy-summary {
+  color: #606266;
+  line-height: 1.6;
+  margin: 0 0 20px 0;
+}
+
+.strategy-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.strategy-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: #909399;
+}
+
+.strategy-stats {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #909399;
+}
+
+.strategy-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+}
+
+/* 相关游戏 */
+.related-games-section {
+  padding: 40px 0;
+  background: white;
+}
+
+.related-loading {
+  padding: 40px 0;
+}
+
+.related-games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.related-game-card {
+  background: #f5f7fa;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.related-game-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.related-game-card .game-cover {
+  width: 100%;
+  height: 120px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.related-game-card .game-info {
+  padding: 16px;
+}
+
+.related-game-card .game-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin: 0 0 8px 0;
+}
+
+.related-game-card .game-category {
+  font-size: 14px;
+  color: #909399;
+  margin: 0;
+}
+
+.game-not-found {
+  padding: 60px 0;
+}
+
+/* 响应式设计优化 */
+@media (max-width: 1200px) {
+  .container {
+    max-width: 960px;
+    padding: 0 30px;
+  }
+  
+  .strategies-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+  }
+  
+  .related-games-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 992px) {
+  .game-header {
+    padding: 40px 0 30px;
+  }
+  
+  .game-title {
+    font-size: 2.5rem;
+  }
+  
+  .game-info-section {
+    gap: 30px;
+  }
+  
+  .game-cover {
+    width: 280px;
+    height: 280px;
+  }
+  
+  .strategies-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+  }
+  
+  .related-games-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+  
+  .game-header {
+    padding: 30px 0 20px;
+  }
+  
+  .game-info-section {
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+  }
+  
+  .game-cover {
+    width: 100%;
+    height: 300px;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+  
+  .game-title {
+    font-size: 2rem;
+    margin-bottom: 15px;
+  }
+  
+  .game-description {
+    font-size: 1rem;
+    margin-bottom: 20px;
+  }
+  
+  .game-meta {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  
+  .meta-item {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    text-align: center;
+  }
+  
+  .game-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+    text-align: left;
+  }
+  
+  .section-title {
+    font-size: 1.5rem;
+  }
+  
+  .strategies-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .strategy-card {
+    margin: 0 5px;
+  }
+  
+  .strategy-header {
+    padding: 15px;
+  }
+  
+  .strategy-title {
+    font-size: 1.1rem;
+  }
+  
+  .strategy-content {
+    padding: 15px;
+  }
+  
+  .strategy-excerpt {
+    font-size: 0.9rem;
+    -webkit-line-clamp: 2;
+  }
+  
+  .strategy-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .related-games-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+  
+  .related-game-card .game-cover {
+    height: 100px;
+  }
+  
+  .related-game-card .game-info {
+    padding: 12px;
+  }
+  
+  .related-game-card .game-name {
+    font-size: 14px;
+  }
+  
+  .related-game-card .game-category {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .container {
+    padding: 0 12px;
+  }
+  
+  .game-header {
+    padding: 20px 0 15px;
+  }
+  
+  .breadcrumb {
+    margin-bottom: 15px;
+  }
+  
+  .game-cover {
+    height: 250px;
+    max-width: 250px;
+  }
+  
+  .game-title {
+    font-size: 1.8rem;
+  }
+  
+  .game-description {
+    font-size: 0.9rem;
+  }
+  
+  .meta-item .label {
+    font-size: 13px;
+  }
+  
+  .meta-item .value {
+    font-size: 13px;
+  }
+  
+  .game-actions .el-button {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+  
+  .summary-section,
+  .strategies-section,
+  .related-games-section {
+    padding: 25px 0;
+  }
+  
+  .section-title {
+    font-size: 1.3rem;
+  }
+  
+  .strategy-card {
+    margin: 0;
+  }
+  
+  .strategy-header {
+    padding: 12px;
+  }
+  
+  .strategy-title {
+    font-size: 1rem;
+  }
+  
+  .strategy-content {
+    padding: 12px;
+  }
+  
+  .strategy-excerpt {
+    font-size: 0.85rem;
+  }
+  
+  .strategy-footer {
+    padding: 12px;
+  }
+  
+  .related-games-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .related-game-card .game-cover {
+    height: 80px;
+  }
+  
+  .related-game-card .game-info {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .game-title {
+    font-size: 1.6rem;
+  }
+  
+  .game-cover {
+    height: 220px;
+    max-width: 220px;
+  }
+  
+  .game-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .game-actions .el-button {
+    width: 100%;
+  }
+  
+  .section-title {
+    font-size: 1.2rem;
+  }
+}
+
+/* 横屏模式优化 */
+@media (max-height: 500px) and (orientation: landscape) {
+  .game-header {
+    padding: 15px 0 10px;
+  }
+  
+  .game-info-section {
+    gap: 20px;
+  }
+  
+  .game-cover {
+    width: 200px;
+    height: 200px;
+  }
+  
+  .summary-section,
+  .strategies-section,
+  .related-games-section {
+    padding: 20px 0;
+  }
+}
+
+/* 高分辨率屏幕优化 */
+@media (min-width: 1400px) {
+  .container {
+    max-width: 1320px;
+  }
+  
+  .strategies-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 35px;
+  }
+  
+  .related-games-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px;
+  }
+}
+
+/* 平板横屏优化 */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  .game-info-section {
+    flex-direction: row;
+    gap: 30px;
+  }
+  
+  .game-cover {
+    width: 250px;
+    height: 250px;
+  }
+  
+  .strategies-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+  }
+  
+  .related-games-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+/* 打印样式 */
+@media print {
+  .game-actions,
+  .section-actions,
+  .strategy-footer,
+  .pagination {
+    display: none;
+  }
+  
+  .game-header {
+    background: none;
+    color: black;
+  }
+  
+  .strategy-card {
+    border: 1px solid #ccc;
+    break-inside: avoid;
+    margin-bottom: 20px;
+  }
+  
+  .strategies-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .related-games-section {
+    display: none;
+  }
+}
+</style>

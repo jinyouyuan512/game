@@ -1,0 +1,524 @@
+/* 响应式布局样式 */
+
+/* 断点定义 */
+:root {
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 768px;
+  --breakpoint-md: 1024px;
+  --breakpoint-lg: 1200px;
+  --breakpoint-xl: 1440px;
+}
+
+/* 容器样式 */
+.container {
+  width: 100%;
+  max-width: var(--breakpoint-lg);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.container-fluid {
+  width: 100%;
+  padding: 0 20px;
+}
+
+/* 网格系统 */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -10px;
+}
+
+.col {
+  flex: 1;
+  padding: 0 10px;
+}
+
+.col-1 { flex: 0 0 8.333333%; max-width: 8.333333%; }
+.col-2 { flex: 0 0 16.666667%; max-width: 16.666667%; }
+.col-3 { flex: 0 0 25%; max-width: 25%; }
+.col-4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
+.col-5 { flex: 0 0 41.666667%; max-width: 41.666667%; }
+.col-6 { flex: 0 0 50%; max-width: 50%; }
+.col-7 { flex: 0 0 58.333333%; max-width: 58.333333%; }
+.col-8 { flex: 0 0 66.666667%; max-width: 66.666667%; }
+.col-9 { flex: 0 0 75%; max-width: 75%; }
+.col-10 { flex: 0 0 83.333333%; max-width: 83.333333%; }
+.col-11 { flex: 0 0 91.666667%; max-width: 91.666667%; }
+.col-12 { flex: 0 0 100%; max-width: 100%; }
+
+/* 响应式工具类 */
+.d-none { display: none !important; }
+.d-block { display: block !important; }
+.d-flex { display: flex !important; }
+.d-grid { display: grid !important; }
+
+/* 文本对齐 */
+.text-left { text-align: left !important; }
+.text-center { text-align: center !important; }
+.text-right { text-align: right !important; }
+
+/* 间距工具类 */
+.m-0 { margin: 0 !important; }
+.m-1 { margin: 8px !important; }
+.m-2 { margin: 16px !important; }
+.m-3 { margin: 24px !important; }
+.m-4 { margin: 32px !important; }
+.m-5 { margin: 40px !important; }
+
+.mt-0 { margin-top: 0 !important; }
+.mt-1 { margin-top: 8px !important; }
+.mt-2 { margin-top: 16px !important; }
+.mt-3 { margin-top: 24px !important; }
+.mt-4 { margin-top: 32px !important; }
+.mt-5 { margin-top: 40px !important; }
+
+.mb-0 { margin-bottom: 0 !important; }
+.mb-1 { margin-bottom: 8px !important; }
+.mb-2 { margin-bottom: 16px !important; }
+.mb-3 { margin-bottom: 24px !important; }
+.mb-4 { margin-bottom: 32px !important; }
+.mb-5 { margin-bottom: 40px !important; }
+
+.ml-0 { margin-left: 0 !important; }
+.ml-1 { margin-left: 8px !important; }
+.ml-2 { margin-left: 16px !important; }
+.ml-3 { margin-left: 24px !important; }
+.ml-4 { margin-left: 32px !important; }
+.ml-5 { margin-left: 40px !important; }
+
+.mr-0 { margin-right: 0 !important; }
+.mr-1 { margin-right: 8px !important; }
+.mr-2 { margin-right: 16px !important; }
+.mr-3 { margin-right: 24px !important; }
+.mr-4 { margin-right: 32px !important; }
+.mr-5 { margin-right: 40px !important; }
+
+.p-0 { padding: 0 !important; }
+.p-1 { padding: 8px !important; }
+.p-2 { padding: 16px !important; }
+.p-3 { padding: 24px !important; }
+.p-4 { padding: 32px !important; }
+.p-5 { padding: 40px !important; }
+
+.pt-0 { padding-top: 0 !important; }
+.pt-1 { padding-top: 8px !important; }
+.pt-2 { padding-top: 16px !important; }
+.pt-3 { padding-top: 24px !important; }
+.pt-4 { padding-top: 32px !important; }
+.pt-5 { padding-top: 40px !important; }
+
+.pb-0 { padding-bottom: 0 !important; }
+.pb-1 { padding-bottom: 8px !important; }
+.pb-2 { padding-bottom: 16px !important; }
+.pb-3 { padding-bottom: 24px !important; }
+.pb-4 { padding-bottom: 32px !important; }
+.pb-5 { padding-bottom: 40px !important; }
+
+.pl-0 { padding-left: 0 !important; }
+.pl-1 { padding-left: 8px !important; }
+.pl-2 { padding-left: 16px !important; }
+.pl-3 { padding-left: 24px !important; }
+.pl-4 { padding-left: 32px !important; }
+.pl-5 { padding-left: 40px !important; }
+
+.pr-0 { padding-right: 0 !important; }
+.pr-1 { padding-right: 8px !important; }
+.pr-2 { padding-right: 16px !important; }
+.pr-3 { padding-right: 24px !important; }
+.pr-4 { padding-right: 32px !important; }
+.pr-5 { padding-right: 40px !important; }
+
+/* 超小屏幕 (手机, 小于 480px) */
+@media (max-width: 479px) {
+  .container {
+    padding: 0 12px;
+  }
+  
+  .container-fluid {
+    padding: 0 12px;
+  }
+  
+  .row {
+    margin: 0 -6px;
+  }
+  
+  .col {
+    padding: 0 6px;
+  }
+  
+  /* 超小屏幕下的列布局 */
+  .col-xs-1 { flex: 0 0 8.333333%; max-width: 8.333333%; }
+  .col-xs-2 { flex: 0 0 16.666667%; max-width: 16.666667%; }
+  .col-xs-3 { flex: 0 0 25%; max-width: 25%; }
+  .col-xs-4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
+  .col-xs-5 { flex: 0 0 41.666667%; max-width: 41.666667%; }
+  .col-xs-6 { flex: 0 0 50%; max-width: 50%; }
+  .col-xs-7 { flex: 0 0 58.333333%; max-width: 58.333333%; }
+  .col-xs-8 { flex: 0 0 66.666667%; max-width: 66.666667%; }
+  .col-xs-9 { flex: 0 0 75%; max-width: 75%; }
+  .col-xs-10 { flex: 0 0 83.333333%; max-width: 83.333333%; }
+  .col-xs-11 { flex: 0 0 91.666667%; max-width: 91.666667%; }
+  .col-xs-12 { flex: 0 0 100%; max-width: 100%; }
+  
+  /* 超小屏幕工具类 */
+  .d-xs-none { display: none !important; }
+  .d-xs-block { display: block !important; }
+  .d-xs-flex { display: flex !important; }
+  .d-xs-grid { display: grid !important; }
+  
+  .text-xs-left { text-align: left !important; }
+  .text-xs-center { text-align: center !important; }
+  .text-xs-right { text-align: right !important; }
+}
+
+/* 小屏幕 (平板, 480px 到 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .container {
+    padding: 0 16px;
+  }
+  
+  .container-fluid {
+    padding: 0 16px;
+  }
+  
+  .row {
+    margin: 0 -8px;
+  }
+  
+  .col {
+    padding: 0 8px;
+  }
+  
+  /* 小屏幕下的列布局 */
+  .col-sm-1 { flex: 0 0 8.333333%; max-width: 8.333333%; }
+  .col-sm-2 { flex: 0 0 16.666667%; max-width: 16.666667%; }
+  .col-sm-3 { flex: 0 0 25%; max-width: 25%; }
+  .col-sm-4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
+  .col-sm-5 { flex: 0 0 41.666667%; max-width: 41.666667%; }
+  .col-sm-6 { flex: 0 0 50%; max-width: 50%; }
+  .col-sm-7 { flex: 0 0 58.333333%; max-width: 58.333333%; }
+  .col-sm-8 { flex: 0 0 66.666667%; max-width: 66.666667%; }
+  .col-sm-9 { flex: 0 0 75%; max-width: 75%; }
+  .col-sm-10 { flex: 0 0 83.333333%; max-width: 83.333333%; }
+  .col-sm-11 { flex: 0 0 91.666667%; max-width: 91.666667%; }
+  .col-sm-12 { flex: 0 0 100%; max-width: 100%; }
+  
+  /* 小屏幕工具类 */
+  .d-sm-none { display: none !important; }
+  .d-sm-block { display: block !important; }
+  .d-sm-flex { display: flex !important; }
+  .d-sm-grid { display: grid !important; }
+  
+  .text-sm-left { text-align: left !important; }
+  .text-sm-center { text-align: center !important; }
+  .text-sm-right { text-align: right !important; }
+}
+
+/* 中等屏幕 (桌面显示器, 768px 到 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* 中等屏幕下的列布局 */
+  .col-md-1 { flex: 0 0 8.333333%; max-width: 8.333333%; }
+  .col-md-2 { flex: 0 0 16.666667%; max-width: 16.666667%; }
+  .col-md-3 { flex: 0 0 25%; max-width: 25%; }
+  .col-md-4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
+  .col-md-5 { flex: 0 0 41.666667%; max-width: 41.666667%; }
+  .col-md-6 { flex: 0 0 50%; max-width: 50%; }
+  .col-md-7 { flex: 0 0 58.333333%; max-width: 58.333333%; }
+  .col-md-8 { flex: 0 0 66.666667%; max-width: 66.666667%; }
+  .col-md-9 { flex: 0 0 75%; max-width: 75%; }
+  .col-md-10 { flex: 0 0 83.333333%; max-width: 83.333333%; }
+  .col-md-11 { flex: 0 0 91.666667%; max-width: 91.666667%; }
+  .col-md-12 { flex: 0 0 100%; max-width: 100%; }
+  
+  /* 中等屏幕工具类 */
+  .d-md-none { display: none !important; }
+  .d-md-block { display: block !important; }
+  .d-md-flex { display: flex !important; }
+  .d-md-grid { display: grid !important; }
+  
+  .text-md-left { text-align: left !important; }
+  .text-md-center { text-align: center !important; }
+  .text-md-right { text-align: right !important; }
+}
+
+/* 大屏幕 (大桌面显示器, 1024px 到 1199px) */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  /* 大屏幕下的列布局 */
+  .col-lg-1 { flex: 0 0 8.333333%; max-width: 8.333333%; }
+  .col-lg-2 { flex: 0 0 16.666667%; max-width: 16.666667%; }
+  .col-lg-3 { flex: 0 0 25%; max-width: 25%; }
+  .col-lg-4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
+  .col-lg-5 { flex: 0 0 41.666667%; max-width: 41.666667%; }
+  .col-lg-6 { flex: 0 0 50%; max-width: 50%; }
+  .col-lg-7 { flex: 0 0 58.333333%; max-width: 58.333333%; }
+  .col-lg-8 { flex: 0 0 66.666667%; max-width: 66.666667%; }
+  .col-lg-9 { flex: 0 0 75%; max-width: 75%; }
+  .col-lg-10 { flex: 0 0 83.333333%; max-width: 83.333333%; }
+  .col-lg-11 { flex: 0 0 91.666667%; max-width: 91.666667%; }
+  .col-lg-12 { flex: 0 0 100%; max-width: 100%; }
+  
+  /* 大屏幕工具类 */
+  .d-lg-none { display: none !important; }
+  .d-lg-block { display: block !important; }
+  .d-lg-flex { display: flex !important; }
+  .d-lg-grid { display: grid !important; }
+  
+  .text-lg-left { text-align: left !important; }
+  .text-lg-center { text-align: center !important; }
+  .text-lg-right { text-align: right !important; }
+}
+
+/* 超大屏幕 (超大桌面显示器, 1200px 及以上) */
+@media (min-width: 1200px) {
+  /* 超大屏幕下的列布局 */
+  .col-xl-1 { flex: 0 0 8.333333%; max-width: 8.333333%; }
+  .col-xl-2 { flex: 0 0 16.666667%; max-width: 16.666667%; }
+  .col-xl-3 { flex: 0 0 25%; max-width: 25%; }
+  .col-xl-4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
+  .col-xl-5 { flex: 0 0 41.666667%; max-width: 41.666667%; }
+  .col-xl-6 { flex: 0 0 50%; max-width: 50%; }
+  .col-xl-7 { flex: 0 0 58.333333%; max-width: 58.333333%; }
+  .col-xl-8 { flex: 0 0 66.666667%; max-width: 66.666667%; }
+  .col-xl-9 { flex: 0 0 75%; max-width: 75%; }
+  .col-xl-10 { flex: 0 0 83.333333%; max-width: 83.333333%; }
+  .col-xl-11 { flex: 0 0 91.666667%; max-width: 91.666667%; }
+  .col-xl-12 { flex: 0 0 100%; max-width: 100%; }
+  
+  /* 超大屏幕工具类 */
+  .d-xl-none { display: none !important; }
+  .d-xl-block { display: block !important; }
+  .d-xl-flex { display: flex !important; }
+  .d-xl-grid { display: grid !important; }
+  
+  .text-xl-left { text-align: left !important; }
+  .text-xl-center { text-align: center !important; }
+  .text-xl-right { text-align: right !important; }
+}
+
+/* 通用响应式组件样式 */
+.responsive-image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.responsive-video {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  height: 0;
+  overflow: hidden;
+}
+
+.responsive-video iframe,
+.responsive-video object,
+.responsive-video embed {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 响应式表格 */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive table {
+  min-width: 600px;
+}
+
+/* 响应式卡片网格 */
+.card-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+@media (max-width: 767px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+/* 响应式导航 */
+.nav-responsive {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (max-width: 767px) {
+  .nav-responsive {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .nav-responsive .nav-menu {
+    width: 100%;
+    margin-top: 16px;
+  }
+}
+
+/* 响应式按钮组 */
+.btn-group-responsive {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 479px) {
+  .btn-group-responsive {
+    flex-direction: column;
+  }
+  
+  .btn-group-responsive .el-button {
+    width: 100%;
+  }
+}
+
+/* 响应式间距调整 */
+@media (max-width: 767px) {
+  .section-padding {
+    padding: 40px 0;
+  }
+  
+  .card-padding {
+    padding: 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .section-padding {
+    padding: 60px 0;
+  }
+  
+  .card-padding {
+    padding: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .section-padding {
+    padding: 80px 0;
+  }
+  
+  .card-padding {
+    padding: 32px;
+  }
+}
+
+/* 响应式字体大小 */
+.responsive-title {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.responsive-subtitle {
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.responsive-text {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@media (min-width: 768px) {
+  .responsive-title {
+    font-size: 32px;
+  }
+  
+  .responsive-subtitle {
+    font-size: 24px;
+  }
+  
+  .responsive-text {
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-title {
+    font-size: 40px;
+  }
+  
+  .responsive-subtitle {
+    font-size: 28px;
+  }
+  
+  .responsive-text {
+    font-size: 18px;
+  }
+}
+
+/* 响应式隐藏/显示 */
+.hide-on-mobile {
+  display: block;
+}
+
+.show-on-mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .hide-on-mobile {
+    display: none;
+  }
+  
+  .show-on-mobile {
+    display: block;
+  }
+}
+
+.hide-on-tablet {
+  display: block;
+}
+
+.show-on-tablet {
+  display: none;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hide-on-tablet {
+    display: none;
+  }
+  
+  .show-on-tablet {
+    display: block;
+  }
+}
+
+.hide-on-desktop {
+  display: block;
+}
+
+.show-on-desktop {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .hide-on-desktop {
+    display: none;
+  }
+  
+  .show-on-desktop {
+    display: block;
+  }
+}
