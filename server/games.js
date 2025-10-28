@@ -7,7 +7,108 @@ const router = express.Router();
 // 添加示例数据
 async function addSampleData() {
   try {
-    console.log('示例数据已存在，跳过添加');
+    // 检查是否已有数据
+    const existingGamesCount = await Game.count();
+    if (existingGamesCount > 0) {
+      console.log('数据库中已有游戏数据，跳过添加示例数据');
+      return;
+    }
+    
+    console.log('开始添加示例游戏数据...');
+    
+    // 创建示例游戏
+    const games = await Promise.all([
+      Game.create({
+        name: '原神',
+        description: '开放世界冒险游戏，拥有精美的画面和丰富的剧情。',
+        developer: '米哈游',
+        category: 'RPG',
+        release_date: '2020-09-28',
+        cover_image_url: 'https://example.com/genshin.jpg',
+        status: 'active',
+        created_at: new Date(),
+        updated_at: new Date()
+      }),
+      Game.create({
+        name: '王者荣耀',
+        description: '多人在线战术竞技游戏，5v5对战玩法。',
+        developer: '腾讯游戏',
+        category: 'MOBA',
+        release_date: '2015-11-26',
+        cover_image_url: 'https://example.com/honor-of-kings.jpg',
+        status: 'active',
+        created_at: new Date(),
+        updated_at: new Date()
+      }),
+      Game.create({
+        name: '绝地求生',
+        description: '大逃杀类型游戏，100名玩家在一个岛上生存竞技。',
+        developer: 'PUBG Corporation',
+        category: '射击',
+        release_date: '2017-12-20',
+        cover_image_url: 'https://example.com/pubg.jpg',
+        status: 'active',
+        created_at: new Date(),
+        updated_at: new Date()
+      })
+    ]);
+    
+    console.log('示例游戏数据添加成功');
+    console.log('开始添加示例攻略数据...');
+    
+    // 创建示例攻略
+    await Promise.all([
+      Strategy.create({
+        game_id: games[0].id,
+        title: '原神新手入门指南',
+        content: '欢迎来到提瓦特大陆！作为新手，建议先完成主线任务，熟悉游戏机制...',
+        difficulty: 'beginner',
+        type: 'guide',
+        author: '旅行者',
+        status: 'published',
+        view_count: 1532,
+        created_at: new Date(),
+        updated_at: new Date()
+      }),
+      Strategy.create({
+        game_id: games[0].id,
+        title: '原神角色培养攻略',
+        content: '角色培养是提升战斗力的关键，本攻略详细介绍各角色的培养路线...',
+        difficulty: 'intermediate',
+        type: 'build',
+        author: '元素大师',
+        status: 'published',
+        view_count: 2845,
+        created_at: new Date(),
+        updated_at: new Date()
+      }),
+      Strategy.create({
+        game_id: games[1].id,
+        title: '王者荣耀打野技巧大全',
+        content: '打野是游戏中的重要位置，本攻略将教你如何高效清野和Gank...',
+        difficulty: 'intermediate',
+        type: 'strategy',
+        author: '野区霸主',
+        status: 'published',
+        view_count: 3210,
+        created_at: new Date(),
+        updated_at: new Date()
+      }),
+      Strategy.create({
+        game_id: games[2].id,
+        title: '绝地求生枪法提升指南',
+        content: '枪法是绝地求生中的核心技能，本攻略包含大量实战技巧和训练方法...',
+        difficulty: 'advanced',
+        type: 'guide',
+        author: '枪王',
+        status: 'published',
+        view_count: 4567,
+        created_at: new Date(),
+        updated_at: new Date()
+      })
+    ]);
+    
+    console.log('示例攻略数据添加成功');
   } catch (error) {
     console.error('添加示例数据失败:', error);
   }
