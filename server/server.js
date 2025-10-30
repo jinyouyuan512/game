@@ -4,6 +4,8 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import { createClient } from '@supabase/supabase-js';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,6 +18,21 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(bodyParser.json());
+
+// 确保上传目录存在
+const uploadDir = path.join(process.cwd(), '../uploads');
+const imagesDir = path.join(uploadDir, 'images');
+const videosDir = path.join(uploadDir, 'videos');
+
+[uploadDir, imagesDir, videosDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
+
+// 配置静态文件服务
+app.use('/uploads', express.static(uploadDir));
+console.log(`静态文件服务配置完成，路径: /uploads -> ${uploadDir}`);
 
 // Supabase Connection
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -30,8 +47,8 @@ const mockData = {
     { id: 3, name: '王者荣耀', description: '一款多人在线战术竞技手机游戏', coverImage: 'wzry.jpg', status: 'active', platform: '手机', developer: '腾讯', publisher: '腾讯' }
   ],
   strategies: [
-    { id: 1, title: '英雄联盟新手攻略', content: '这是一份详细的新手入门指南...', difficulty: '简单', type: '入门', game_id: 1, user_id: 1, view_count: 100, status: 'published' },
-    { id: 2, title: '原神探索技巧', content: '高效探索提瓦特大陆的方法...', difficulty: '中等', type: '探索', game_id: 2, user_id: 2, view_count: 200, status: 'published' }
+    { id: 1, title: '英雄联盟新手攻略', content: '这是一份详细的新手入门指南...', difficulty: '简单', type: '入门', game_id: 1, user_id: 1, view_count: 100, status: 'published', image_urls: JSON.stringify(['/uploads/images/lol-guide.jpg']), video_urls: JSON.stringify([]) },
+    { id: 2, title: '原神探索技巧', content: '高效探索提瓦特大陆的方法...', difficulty: '中等', type: '探索', game_id: 2, user_id: 2, view_count: 200, status: 'published', image_urls: JSON.stringify([]), video_urls: JSON.stringify(['/uploads/videos/genshin-explore.mp4']) }
   ],
   tags: [
     { id: 1, name: '新手' },
@@ -364,20 +381,51 @@ const Strategy = {
   },
   findByPk: async (id) => {
     try {
+      // 移除不存在的字段
       const { data, error } = await supabase
         .from('strategies')
-        .select('*')
+        .select('id, title, content, difficulty, type, game_id, user_id, view_count, status, created_at')
         .eq('id', id)
         .single();
-      if (error) throw error;
+      
+      console.log('数据库查询结果:', { data, error });
+      
+      if (error) {
+        console.log('攻略不存在或查询失败:', error.message);
+        // 尝试从模拟数据中查找
+        const mockStrategy = mockData.strategies.find(strategy => strategy.id === id);
+        if (mockStrategy) {
+          console.log('从模拟数据中找到攻略');
+          return mockStrategy;
+        }
+        return null; // 记录不存在时返回null
+      }
+      
+      // 添加调试日志，查看返回的数据
+      console.log('数据库查询返回的攻略数据:', {
+        id: data.id,
+        hasImageUrls: data.image_urls !== undefined,
+        imageUrlsType: typeof data.image_urls,
+        imageUrlsValue: data.image_urls,
+        hasVideoUrls: data.video_urls !== undefined,
+        videoUrlsType: typeof data.video_urls,
+        videoUrlsValue: data.video_urls
+      });
       return data;
     } catch (error) {
-      console.warn('使用模拟Strategy数据:', error.message);
-      return mockData.strategies.find(strategy => strategy.id === id);
+      console.error('查询Strategy失败:', error);
+      // 从模拟数据中查找作为最后手段
+      const mockStrategy = mockData.strategies.find(strategy => strategy.id === id);
+      if (mockStrategy) {
+        console.log('从模拟数据中找到攻略');
+        return mockStrategy;
+      }
+      return null; // 所有查找都失败时返回null
     }
   },
   create: async (strategyData) => {
     try {
+      // 不再移除image_urls和video_urls字段，确保它们被保存到数据库中
       const { data, error } = await supabase
         .from('strategies')
         .insert([strategyData])
@@ -388,13 +436,18 @@ const Strategy = {
     } catch (error) {
       console.warn('模拟创建Strategy数据:', error.message);
       const newId = mockData.strategies.length + 1;
-      const newStrategy = { ...strategyData, id: newId };
+      // 不再移除image_urls和video_urls字段
+      const newStrategy = { 
+        ...strategyData, 
+        id: newId
+      };
       mockData.strategies.push(newStrategy);
       return newStrategy;
     }
   },
   update: async (updates, options) => {
     try {
+      // 不再移除image_urls和video_urls字段，确保它们被保存到数据库中
       const { data, error } = await supabase
         .from('strategies')
         .update(updates)
@@ -404,7 +457,7 @@ const Strategy = {
       return [data.length, data];
     } catch (error) {
       console.warn('模拟更新Strategy数据:', error.message);
-      // 模拟更新
+      // 模拟更新，不再移除image_urls和video_urls字段
       const updatedStrategies = mockData.strategies.map(strategy => {
         const where = options.where || {};
         const matches = Object.keys(where).every(key => strategy[key] === where[key]);
@@ -493,11 +546,13 @@ app.get('/', (req, res) => {
 import { authRouter } from './auth.js';
 import { dataRouter } from './data.js';
 import { gamesRouter, addSampleData } from './games.js';
+import { strategiesRouter } from './strategies.js';
 
 // Use Routers
 app.use('/api/auth', authRouter);
 app.use('/api/data', dataRouter);
-app.use('/api', gamesRouter);
+app.use('/', gamesRouter);
+app.use('/', strategiesRouter);
 
 // Start Server
 async function startServer() {
@@ -522,5 +577,5 @@ startServer();
 // User.hasMany(Note, { foreignKey: 'userId' });
 // Note.belongsTo(User, { foreignKey: 'userId' });
 
-export { supabase, sequelize, User, Note, Game, Strategy, Tag, StrategyTag };
+export { supabase, sequelize, User, Note, Game, Strategy, Tag, StrategyTag, mockData };
 

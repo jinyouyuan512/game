@@ -124,6 +124,22 @@
           <div class="content-wrapper">
             <article class="strategy-article">
               <div class="article-content" v-html="formattedContent"></div>
+              
+              <!-- 攻略图片展示 -->
+              <div v-if="strategy.image_urls && strategy.image_urls.length > 0" class="strategy-images">
+                <h3 class="images-title">攻略图片</h3>
+                <div class="images-grid">
+                  <div v-for="(image, index) in strategy.image_urls" :key="index" class="image-item">
+                    <img 
+                      :src="image" 
+                      :alt="`攻略图片 ${index + 1}`" 
+                      class="strategy-image"
+                      @click="previewImage(index)"
+                      @error="handleImageError($event)"
+                    />
+                  </div>
+                </div>
+              </div>
             </article>
             
             <!-- 侧边栏 -->
@@ -217,6 +233,14 @@
       </div>
     </div>
   </div>
+  
+  <!-- 简化的图片预览实现 -->
+  <div v-if="previewVisible" class="image-preview-overlay" @click="previewVisible = false">
+    <div class="preview-content" @click.stop>
+      <img :src="previewImages[previewIndex]?.url" :alt="previewImages[previewIndex]?.alt" class="preview-image" />
+      <button class="close-button" @click="previewVisible = false">关闭</button>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -237,6 +261,9 @@ const summaryLoading = ref(false)
 const tocItems = ref([])
 const activeSection = ref('')
 const relatedStrategies = ref([])
+const previewImages = ref([])
+const previewVisible = ref(false)
+const previewIndex = ref(0)
 
 // 计算属性
 const formattedContent = computed(() => {
@@ -260,22 +287,23 @@ const fetchStrategy = async () => {
     loading.value = true
     const strategyId = route.params.id
     
-    await gameStore.fetchStrategy(strategyId)
-    // 直接使用gameStore中的策略数据
-    strategy.value = gameStore.strategies.find(s => s.id === parseInt(strategyId))
+    // 直接使用fetchStrategy返回的数据，而不是从strategies数组中查找
+    strategy.value = await gameStore.fetchStrategy(strategyId)
     
     // 获取相关攻略
-    if (strategy.value.game_id) {
+    if (strategy.value && strategy.value.game_id) {
       try {
         await gameStore.fetchStrategiesByGame(strategy.value.game_id)
         relatedStrategies.value = gameStore.strategies
-          .filter(s => s.id !== strategy.value.id)
+          .filter(s => s && s.id !== strategy.value.id)
           .slice(0, 5)
       } catch (error) {
         console.error('获取相关攻略失败:', error)
         // 不使用模拟数据，保持相关攻略为空数组
         relatedStrategies.value = []
       }
+    } else {
+      relatedStrategies.value = []
     }
     
     // 生成目录
@@ -470,7 +498,22 @@ const copyLink = async () => {
 }
 
 const handleImageError = (event) => {
-  event.target.src = '/game-placeholder.svg'
+  event.target.src = '/images/default-strategy.png';
+  event.target.alt = '默认攻略图片';
+}
+
+// 图片预览功能
+const previewImage = (index) => {
+  if (!strategy.value?.image_urls || strategy.value.image_urls.length === 0) return;
+  
+  // 准备预览数据
+  previewImages.value = strategy.value.image_urls.map(url => ({
+    url: url,
+    alt: '攻略图片'
+  }));
+  
+  previewIndex.value = index;
+  previewVisible.value = true;
 }
 
 const formatDate = (dateString) => {
@@ -823,7 +866,7 @@ onUnmounted(() => {
 
 .article-content {
   line-height: 1.8;
-  color: rgba(255, 255, 255, 0.9);
+  color: #000000; /* 修改为黑色 */
 }
 
 .article-content :deep(h1),
@@ -1212,6 +1255,109 @@ onUnmounted(() => {
   .article-content :deep(h3) {
     font-size: 1.3rem;
     margin: 20px 0 12px;
+  }
+  
+  /* 攻略图片样式 */
+  .strategy-images {
+    margin-top: 40px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+  }
+  
+  .images-title {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: #00d4ff;
+  }
+  
+  .images-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+  }
+  
+  .image-item {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .image-item:hover {
+    transform: translateY(-5px);
+    border-color: #00d4ff;
+  }
+  
+  .strategy-image {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    display: block;
+    transition: filter 0.3s ease;
+  }
+  
+  .image-item:hover .strategy-image {
+    filter: brightness(1.1);
+  }
+  
+  /* 图片预览样式 */
+  .image-preview-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  
+  .preview-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+  }
+  
+  .preview-image {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .close-button {
+    position: absolute;
+    top: 10px;
+    right: -40px;
+    background-color: #00d4ff;
+    color: #000;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+  
+  .close-button:hover {
+    background-color: #fff;
+    transform: scale(1.1);
+  }
+  
+  @media (max-width: 768px) {
+    .close-button {
+      right: 10px;
+      top: -40px;
+    }
   }
 }
 </style>

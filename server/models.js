@@ -96,6 +96,14 @@ export function initModels(sequelize) {
       type: DataTypes.INTEGER,
       defaultValue: 0
     },
+    image_urls: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    video_urls: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW

@@ -83,7 +83,7 @@
 
             <el-form-item>
               <div class="form-actions">
-                <el-button type="primary" @click="submitForm" :loading="gameStore.loading">
+                <el-button type="primary" @click="submitForm" :loading="gameStore.gamesLoading">
                   <el-icon><Plus /></el-icon>
                   添加游戏
                 </el-button>

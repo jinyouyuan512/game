@@ -10,6 +10,10 @@
           <el-icon><Plus /></el-icon>
           添加游戏
         </el-button>
+        <el-button type="success" @click="testApiConnection">
+          <el-icon><Refresh /></el-icon>
+          测试API连接
+        </el-button>
       </div>
     </div>
 
@@ -192,9 +196,12 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useGameStore } from '../stores/game'
-import { supabase } from '../lib/supabase'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Delete, Edit, Search, Refresh } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { useGameStore } from '../stores/game'
+import { testApiConnection as apiTest } from '../lib/api'
+import * as supabase from '../lib/supabase'
 
 const gameStore = useGameStore()
 
@@ -330,11 +337,17 @@ const handleDialogClose = () => {
 }
 
 const saveGame = async () => {
-  if (!gameFormRef.value) return
+  console.log('saveGame方法开始执行');
+  if (!gameFormRef.value) {
+    console.error('gameFormRef不存在');
+    return;
+  }
 
   try {
+    console.log('开始验证表单');
     await gameFormRef.value.validate()
     saving.value = true
+    console.log('表单验证通过');
 
     const gameData = {
       name: gameForm.name,
@@ -346,8 +359,11 @@ const saveGame = async () => {
       description: gameForm.description,
       status: gameForm.status
     }
+    
+    console.log('准备保存的游戏数据:', gameData);
 
     if (isEditing.value) {
+      console.log('执行编辑游戏操作');
       // 更新游戏
       const { error } = await supabase
         .from('games')
@@ -358,25 +374,23 @@ const saveGame = async () => {
 
       ElMessage.success('游戏更新成功')
     } else {
-      // 添加游戏
-      const { error } = await supabase
-        .from('games')
-        .insert([gameData])
-
-      if (error) throw error
-
+      console.log('执行添加游戏操作，调用gameStore.createGame');
+      // 添加游戏 - 使用统一的gameStore方法
+      await gameStore.createGame(gameData)
       ElMessage.success('游戏添加成功')
     }
 
     // 重新加载游戏数据
+    console.log('重新加载游戏数据');
     await gameStore.fetchGames()
     handleDialogClose()
 
   } catch (error) {
     console.error('保存游戏失败:', error)
-    ElMessage.error('保存失败: ' + error.message)
+    ElMessage.error('保存失败: ' + (error.message || '未知错误'))
   } finally {
     saving.value = false
+    console.log('saveGame方法执行完成');
   }
 }
 
@@ -434,8 +448,30 @@ const loadData = async () => {
   }
 }
 
-onMounted(() => {
+// 测试API连接
+const testApiConnection = async () => {
+  console.log('用户点击了测试API连接按钮');
+  try {
+    const result = await apiTest();
+    ElMessage.success('API连接测试成功！');
+    console.log('API测试成功结果:', result);
+  } catch (error) {
+    console.error('API测试失败:', error);
+    ElMessage.error('API连接测试失败: ' + (error.message || '未知错误'));
+  }
+}
+
+onMounted(async () => {
   loadData()
+  
+  // 页面加载时自动测试API连接
+  console.log('页面加载时自动执行API连接测试...');
+  try {
+    const result = await apiTest();
+    console.log('自动API测试成功结果:', result);
+  } catch (error) {
+    console.error('自动API测试失败:', error);
+  }
 })
 </script>
 

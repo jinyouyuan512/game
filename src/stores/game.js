@@ -92,8 +92,10 @@ export const useGameStore = defineStore('game', {
         const queryString = params.toString() ? `?${params.toString()}` : ''
         const response = await apiClient.get(`/api/games${queryString}`)
         
-        this.games = response.data || response || []
-        this.gamesTotal = response.total || this.games.length
+        // 处理后端返回的格式 { data: { games: [], total: ... } }
+        const gamesData = response.data || {};
+        this.games = gamesData.games || response.data || response || []
+        this.gamesTotal = gamesData.total || response.total || this.games.length
         this.gamesFilters = currentFilters
         
         return this.games
@@ -154,8 +156,10 @@ export const useGameStore = defineStore('game', {
         const queryString = params.toString() ? `?${params.toString()}` : ''
         const response = await apiClient.get(`/api/strategies${queryString}`)
         
-        this.strategies = response.data || response || []
-        this.strategiesTotal = response.total || this.strategies.length
+        // 处理后端返回的格式 { data: { strategies: [], total: ... } }
+        const strategiesData = response.data || {};
+        this.strategies = strategiesData.strategies || [];
+        this.strategiesTotal = strategiesData.total || this.strategies.length;
         this.strategiesFilters = currentFilters
         
         return this.strategies
@@ -352,7 +356,33 @@ export const useGameStore = defineStore('game', {
       this.strategiesError = null
       
       try {
-        const response = await apiClient.post('/api/strategies', strategyData)
+        // 检查是否为FormData对象
+        const isFormData = strategyData instanceof FormData
+        
+        let response
+        
+        if (isFormData) {
+          // 对于FormData，确保添加user_id字段（测试环境固定为1）
+          if (!strategyData.has('user_id')) {
+            strategyData.append('user_id', '1')
+          }
+          response = await apiClient.post('/api/strategies', strategyData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          })
+        } else {
+          // 对于普通对象，使用原来的处理方式
+          const strategyPayload = {
+            game_id: strategyData.game_id,
+            title: strategyData.title,
+            content: strategyData.content,
+            difficulty: strategyData.difficulty || 'medium',
+            type: strategyData.type || 'general',
+            user_id: 1 // 测试环境使用固定用户ID
+          }
+          response = await apiClient.post('/api/strategies', strategyPayload)
+        }
         
         // 将新创建的攻略添加到策略列表的开头
         if (response.data || response) {
@@ -373,15 +403,115 @@ export const useGameStore = defineStore('game', {
         console.error('Failed to create strategy:', error)
         
         // 处理不同类型的错误
-        const errorData = {
-          message: this.strategiesError,
-          type: error.response?.status === 401 ? 'unauthorized' : 'network_error',
-          statusCode: error.response?.status
+        if (error.response?.status === 401) {
+          const errorData = {
+            message: '未授权，请先登录',
+            type: 'unauthorized',
+            statusCode: 401
+          }
+          throw errorData
+        } else if (error.response?.status === 400) {
+          const errorData = {
+            message: error.response.data?.message || '请检查输入信息',
+            type: 'validation_error',
+            statusCode: 400
+          }
+          throw errorData
+        } else {
+          const errorData = {
+            message: this.strategiesError,
+            type: 'network_error',
+            statusCode: error.response?.status
+          }
+          throw errorData
         }
-        
-        throw errorData
       } finally {
         this.strategiesLoading = false
+      }
+    },
+    
+    /**
+     * 创建新游戏
+     */
+    async createGame(gameData) {
+      console.log('createGame方法开始执行，接收的数据:', gameData);
+      
+      // 验证必要字段是否存在
+      if (!gameData.name || !gameData.developer || !gameData.category) {
+        console.error('缺少必要字段:', { name: gameData.name, developer: gameData.developer, category: gameData.category });
+        throw new Error('缺少必要字段: 游戏名称、开发商和分类为必填项');
+      }
+      
+      this.gamesLoading = true
+      this.gamesError = null
+      
+      try {
+        // 确保gameData包含必要字段并符合后端API要求，添加所有可能的字段
+        const gamePayload = {
+          name: gameData.name,
+          description: gameData.description || '',
+          developer: gameData.developer,
+          publisher: gameData.publisher || '',
+          category: gameData.category,
+          release_date: gameData.release_date || null,
+          cover_image_url: gameData.cover_image_url || '',
+          status: gameData.status || 'draft'
+        };
+        
+        console.log('准备发送到API的数据:', gamePayload);
+        console.log('API请求URL:', '/api/games');
+        
+        // 显示apiClient对象信息
+        console.log('apiClient对象存在:', !!apiClient);
+        console.log('apiClient.post方法存在:', typeof apiClient.post === 'function');
+        
+        // 尝试发送请求
+        console.log('开始发送API请求...');
+        const response = await apiClient.post('/api/games', gamePayload)
+        
+        console.log('API请求成功，响应数据:', response);
+        
+        // 将新创建的游戏添加到游戏列表中
+        if (response.data || response) {
+          const newGame = response.data || response
+          console.log('准备添加到游戏列表的新游戏:', newGame);
+          this.games.unshift(newGame)
+          this.gamesTotal++
+        }
+        
+        console.log('createGame方法执行成功');
+        return response.data || response
+      } catch (error) {
+        this.gamesError = error.message || '创建游戏失败'
+        console.error('Failed to create game:', error);
+        console.error('错误详情:', error.response?.data || error);
+        console.error('错误状态码:', error.response?.status);
+        
+        // 处理不同类型的错误
+        if (error.response?.status === 401) {
+          const errorData = {
+            message: '未授权，请先登录',
+            type: 'unauthorized',
+            statusCode: 401
+          }
+          throw errorData
+        } else if (error.response?.status === 400) {
+          const errorData = {
+            message: error.response.data?.message || '请检查输入信息',
+            type: 'validation_error',
+            statusCode: 400
+          }
+          throw errorData
+        } else {
+          const errorData = {
+            message: this.gamesError,
+            type: 'network_error',
+            statusCode: error.response?.status
+          }
+          throw errorData
+        }
+      } finally {
+        this.gamesLoading = false
       }
     },
     
@@ -398,6 +528,32 @@ export const useGameStore = defineStore('game', {
       this.tags = []
       this.tagsError = null
       this.resetSearch()
+    },
+    
+    /**
+     * 测试API连接
+     */
+    async testApiConnection() {
+      console.log('开始测试API连接...');
+      try {
+        // 直接测试POST请求到/api/games
+        const testData = {
+          name: '测试游戏',
+          developer: '测试开发商',
+          category: '角色扮演',
+          description: '这是一个测试游戏',
+          status: 'draft'
+        };
+        
+        console.log('测试数据:', testData);
+        const response = await apiClient.post('/api/games', testData);
+        console.log('API测试成功，响应:', response);
+        return response;
+      } catch (error) {
+        console.error('API测试失败:', error);
+        console.error('错误详情:', error.response || error);
+        throw error;
+      }
     }
   }
 })

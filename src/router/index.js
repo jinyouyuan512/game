@@ -37,7 +37,8 @@ const routes = [
     name: 'add-game',
     component: AddGameView,
     meta: {
-      title: '添加新游戏'
+      title: '添加新游戏',
+      requiresAuth: true
     }
   },
   {
@@ -45,7 +46,8 @@ const routes = [
     name: 'add-strategy',
     component: AddStrategyView,
     meta: {
-      title: '提交游戏攻略'
+      title: '提交游戏攻略',
+      requiresAuth: true
     }
   },
   {

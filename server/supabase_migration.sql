@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS strategies (
     view_count INTEGER DEFAULT 0,
     difficulty VARCHAR(50),   -- 兼容mockData中的字段名
     type VARCHAR(50),         -- 兼容mockData中的字段名
+    image_urls TEXT,          -- 存储图片URL数组的JSON字符串
+    video_urls TEXT,          -- 存储视频URL数组的JSON字符串
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (game_id) REFERENCES games(id),
     FOREIGN KEY (user_id) REFERENCES users(id)

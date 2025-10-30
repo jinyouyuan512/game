@@ -347,8 +347,17 @@ const saveGame = async () => {
       await gameStore.updateGame(editingGame.value.id, gameForm)
       ElMessage.success('更新成功')
     } else {
-      // 添加游戏
-      await gameStore.addGame(gameForm)
+      // 添加游戏 - 确保字段映射正确
+      const gameData = {
+        name: gameForm.name,
+        description: gameForm.description,
+        developer: gameForm.developer,
+        category: gameForm.category,
+        release_date: gameForm.release_date,
+        cover_image_url: gameForm.image_url // 正确映射到后端期望的字段名
+      }
+      
+      await gameStore.createGame(gameData)
       ElMessage.success('添加成功')
     }
     

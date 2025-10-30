@@ -1,44 +1,101 @@
 // 本地API客户端
-const API_BASE_URL = '' // 使用空字符串，因为我们已经在Vite配置中设置了代理
+const API_BASE_URL = 'http://localhost:3000' // 直接使用后端服务器地址，不依赖代理
 
 // 测试API连接
 export const testApiConnection = async () => {
   try {
-    console.log('测试API连接...');
+    console.log('===== 开始测试API连接 =====');
     
-    // 尝试使用不同的方式
-    console.log('尝试方式1: 直接fetch');
+    // 测试GET请求
+    console.log('测试1: GET请求获取游戏列表');
     try {
-      const response1 = await fetch('http://localhost:3000/api/games', {
+      const startTime = Date.now();
+      const response = await fetch('http://localhost:3000/api/games', {
         method: 'GET',
         mode: 'cors',
         headers: {
           'Content-Type': 'application/json'
         }
       });
-      console.log('方式1响应状态:', response1.status);
-      const data1 = await response1.json();
-      console.log('方式1响应数据:', data1);
-      return data1;
-    } catch (error1) {
-      console.error('方式1失败:', error1);
+      const endTime = Date.now();
+      console.log(`GET请求耗时: ${endTime - startTime}ms`);
+      console.log('GET响应状态:', response.status);
+      console.log('GET响应状态文本:', response.statusText);
       
-      console.log('尝试方式2: 使用IP地址');
+      // 显示完整的响应头
+      console.log('GET响应头:');
+      response.headers.forEach((value, key) => {
+        console.log(`  ${key}: ${value}`);
+      });
+      
+      const data = await response.json();
+      console.log('GET响应数据类型:', typeof data);
+      console.log('GET响应数据:', data);
+      
+      return { success: true, method: 'GET', data };
+    } catch (getError) {
+      console.error('GET请求失败:', getError);
+      console.error('GET错误详情:', getError.message);
+      
+      // 测试POST请求
+      console.log('测试2: POST请求创建游戏');
       try {
-        const response2 = await fetch('http://127.0.0.1:3000/api/games', {
-          method: 'GET',
+        const testData = {
+          name: '测试游戏',
+          developer: '测试开发商',
+          category: '角色扮演',
+          description: '这是一个测试游戏',
+          status: 'draft'
+        };
+        console.log('POST测试数据:', testData);
+        
+        const startTime = Date.now();
+        const response = await fetch('http://localhost:3000/api/games', {
+          method: 'POST',
           mode: 'cors',
           headers: {
             'Content-Type': 'application/json'
-          }
+          },
+          body: JSON.stringify(testData)
         });
-        console.log('方式2响应状态:', response2.status);
-        const data2 = await response2.json();
-        console.log('方式2响应数据:', data2);
-        return data2;
-      } catch (error2) {
-        console.error('方式2失败:', error2);
-        throw new Error('所有API连接方式都失败了');
+        const endTime = Date.now();
+        console.log(`POST请求耗时: ${endTime - startTime}ms`);
+        console.log('POST响应状态:', response.status);
+        console.log('POST响应状态文本:', response.statusText);
+        
+        // 显示完整的响应头
+        console.log('POST响应头:');
+        response.headers.forEach((value, key) => {
+          console.log(`  ${key}: ${value}`);
+        });
+        
+        const data = await response.json();
+        console.log('POST响应数据:', data);
+        
+        return { success: true, method: 'POST', data };
+      } catch (postError) {
+        console.error('POST请求失败:', postError);
+        console.error('POST错误详情:', postError.message);
+        
+        // 尝试使用IP地址
+        console.log('测试3: 使用IP地址请求');
+        try {
+          const response = await fetch('http://127.0.0.1:3000/api/games', {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          console.log('IP地址响应状态:', response.status);
+          const data = await response.json();
+          console.log('IP地址响应数据:', data);
+          return { success: true, method: 'GET_IP', data };
+        } catch (ipError) {
+          console.error('IP地址请求失败:', ipError);
+          console.error('IP错误详情:', ipError.message);
+          throw new Error(`所有API连接方式都失败了: ${getError.message}, ${postError.message}, ${ipError.message}`);
+        }
       }
     }
   } catch (error) {
@@ -57,10 +114,13 @@ class ApiClient {
     console.log('===== API请求开始 =====')
     console.log('API请求URL:', url)
     console.log('请求方法:', options.method || 'GET')
+    // 检查是否为FormData请求
+    const isFormData = options.body instanceof FormData
     const config = {
       mode: 'cors',
       headers: {
-        'Content-Type': 'application/json',
+        // 对于FormData，不需要设置Content-Type，让浏览器自动设置
+        ...(!isFormData && { 'Content-Type': 'application/json' }),
         ...options.headers
       },
       ...options
@@ -211,9 +271,11 @@ class ApiClient {
 
   // POST请求
   async post(endpoint, data) {
+    const isFormData = data instanceof FormData
     return this.request(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data)
+      headers: isFormData ? {} : { 'Content-Type': 'application/json' },
+      body: isFormData ? data : JSON.stringify(data)
     })
   }
 

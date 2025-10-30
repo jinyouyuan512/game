@@ -27,7 +27,7 @@
                 v-model="strategyForm.game_id"
                 placeholder="请选择游戏"
                 filterable
-                loading="gameStore.loading"
+                :loading="gameStore.gamesLoading"
               >
                 <el-option
                   v-for="game in gameStore.games"
@@ -58,64 +58,122 @@
             </el-form-item>
 
             <el-form-item label="攻略类型" prop="type">
-              <el-select
-                v-model="strategyForm.type"
-                placeholder="请选择攻略类型"
-              >
-                <el-option label="通用攻略" value="general" />
-                <el-option label="通关流程" value="walkthrough" />
-                <el-option label="隐藏要素" value="secrets" />
-                <el-option label="角色培养" value="character" />
-                <el-option label="装备推荐" value="equipment" />
-                <el-option label="副本攻略" value="dungeon" />
-              </el-select>
-            </el-form-item>
+          <el-select
+            v-model="strategyForm.type"
+            placeholder="请选择攻略类型"
+          >
+            <el-option label="通用攻略" value="general" />
+            <el-option label="通关流程" value="walkthrough" />
+            <el-option label="隐藏要素" value="secrets" />
+            <el-option label="角色培养" value="character" />
+            <el-option label="装备推荐" value="equipment" />
+            <el-option label="副本攻略" value="dungeon" />
+          </el-select>
+        </el-form-item>
 
-            <el-form-item label="难度等级" prop="difficulty">
-              <el-select
-                v-model="strategyForm.difficulty"
-                placeholder="请选择攻略难度"
-              >
-                <el-option label="入门级" value="easy" />
-                <el-option label="普通级" value="medium" />
-                <el-option label="高级" value="hard" />
-                <el-option label="专家级" value="expert" />
-              </el-select>
-            </el-form-item>
+        <el-form-item label="难度等级" prop="difficulty">
+          <el-select
+            v-model="strategyForm.difficulty"
+            placeholder="请选择攻略难度"
+          >
+            <el-option label="入门级" value="easy" />
+            <el-option label="普通级" value="medium" />
+            <el-option label="高级" value="hard" />
+            <el-option label="专家级" value="expert" />
+          </el-select>
+        </el-form-item>
 
-            <!-- 攻略内容 -->
-            <h3 class="form-section-title">攻略内容</h3>
-            
-            <el-form-item label="攻略正文" prop="content">
-              <el-input
-                v-model="strategyForm.content"
-                type="textarea"
-                :rows="12"
-                placeholder="请输入攻略详细内容，支持Markdown语法"
-                resize="vertical"
-              />
-              <div class="tips">
-                <el-tag size="small" type="info">提示：</el-tag>
-                您可以使用Markdown语法来格式化攻略内容，如标题、列表、加粗等
+        <!-- 图片上传区域 -->
+        <el-form-item label="上传图片">
+          <el-upload
+            v-model:file-list="imageFiles"
+            :on-change="handleImageUpload"
+            :auto-upload="false"
+            :limit="uploadConfig.image.limit"
+            accept="image/jpeg,image/png,image/gif"
+            list-type="picture-card"
+          >
+            <div v-if="imageFiles.length < uploadConfig.image.limit">
+              <el-icon><Plus /></el-icon>
+              <div class="el-upload__text">上传图片</div>
+              <div class="el-upload__tip">最多上传{{ uploadConfig.image.limit }}张图片，每张不超过10MB</div>
+            </div>
+            <template #file="{ file }">
+              <img :src="getObjectUrl(file)" alt="" class="el-upload-list__item-thumbnail">
+              <div class="el-upload-list__item-actions">
+                <span class="el-upload-list__item-actions-btn">
+                  <el-icon><Check /></el-icon>
+                </span>
+                <span class="el-upload-list__item-actions-btn" @click="removeImage(imageFiles.findIndex(f => f.uid === file.uid))">
+                  <el-icon><Delete /></el-icon>
+                </span>
               </div>
-            </el-form-item>
+              <div class="el-upload-list__item-name">{{ file.name }}</div>
+              <div class="el-upload-list__item-size">{{ file.size ? formatFileSize(file.size) : '' }}</div>
+            </template>
+          </el-upload>
+        </el-form-item>
 
-            <el-form-item>
-              <div class="form-actions">
-                <el-button type="primary" @click="submitForm" :loading="gameStore.loading">
-                  <el-icon><Upload /></el-icon>
-                  提交攻略
-                </el-button>
-                <el-button @click="resetForm">
-                  <el-icon><Refresh /></el-icon>
-                  重置
-                </el-button>
-                <el-button @click="goBack">
-                  <el-icon><ArrowLeft /></el-icon>
-                  返回
-                </el-button>
+        <!-- 视频上传区域 -->
+        <el-form-item label="上传视频">
+          <el-upload
+            v-model:file-list="videoFiles"
+            :on-change="handleVideoUpload"
+            :auto-upload="false"
+            :limit="uploadConfig.video.limit"
+            accept="video/mp4,video/avi,video/quicktime"
+            list-type="text"
+          >
+            <el-button type="primary">
+              <el-icon><Upload /></el-icon> 上传视频
+            </el-button>
+            <div class="el-upload__tip">最多上传{{ uploadConfig.video.limit }}个视频，每个不超过50MB</div>
+            <template #file="{ file }">
+              <div class="el-upload-list__item">
+                <el-icon><VideoPlay /></el-icon>
+                <span class="el-upload-list__item-name">{{ file.name || '' }}</span>
+                <span class="el-upload-list__item-size">{{ file.size ? formatFileSize(file.size) : '' }}</span>
+                <span class="el-upload-list__item-actions-btn" @click="removeVideo(videoFiles.findIndex(f => f.uid === file.uid))">
+                  <el-icon><Delete /></el-icon>
+                </span>
               </div>
-            </el-form-item>
+            </template>
+          </el-upload>
+        </el-form-item>
+
+        <!-- 攻略内容 -->
+        <h3 class="form-section-title">攻略内容</h3>
+        
+        <el-form-item label="攻略正文" prop="content">
+          <el-input
+            v-model="strategyForm.content"
+            type="textarea"
+            :rows="12"
+            placeholder="请输入攻略详细内容，支持Markdown语法"
+            resize="vertical"
+          />
+          <div class="tips">
+            <el-tag size="small" type="info">提示：</el-tag>
+            您可以使用Markdown语法来格式化攻略内容，如标题、列表、加粗等
+          </div>
+        </el-form-item>
+
+        <el-form-item>
+          <div class="form-actions">
+            <el-button type="primary" @click="submitForm" :loading="gameStore.strategiesLoading">
+              <el-icon><Upload /></el-icon>
+              提交攻略
+            </el-button>
+            <el-button @click="resetForm">
+              <el-icon><Refresh /></el-icon>
+              重置
+            </el-button>
+            <el-button @click="goBack">
+              <el-icon><ArrowLeft /></el-icon>
+              返回
+            </el-button>
+          </div>
+        </el-form-item>
           </el-form>
         </el-card>
       </div>
@@ -127,8 +185,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '../stores/game'
-import { ElMessage } from 'element-plus'
-import { Upload, Refresh, ArrowLeft } from '@element-plus/icons-vue'
+import { ElMessage, ElNotification } from 'element-plus'
+import { Upload, Refresh, ArrowLeft, Plus, VideoPlay, Delete, Check } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const gameStore = useGameStore()
@@ -142,6 +200,108 @@ const strategyForm = reactive({
   difficulty: 'medium',
   type: 'general'
 })
+
+// 文件上传相关
+const imageFiles = ref([])
+const videoFiles = ref([])
+
+// 上传配置
+const uploadConfig = {
+  image: {
+    name: 'images',
+    accept: ['image/jpeg', 'image/png', 'image/gif'],
+    maxSize: 10 * 1024 * 1024, // 10MB
+    limit: 5,
+    sizeErrorMsg: '图片大小不能超过10MB',
+    typeErrorMsg: '只支持JPG、PNG和GIF格式的图片',
+    limitErrorMsg: '最多只能上传5张图片'
+  },
+  video: {
+    name: 'videos',
+    accept: ['video/mp4', 'video/avi', 'video/quicktime'],
+    maxSize: 50 * 1024 * 1024, // 50MB
+    limit: 5,
+    sizeErrorMsg: '视频大小不能超过50MB',
+    typeErrorMsg: '只支持MP4、AVI和MOV格式的视频',
+    limitErrorMsg: '最多只能上传5个视频'
+  }
+}
+
+// 文件验证函数
+const validateFile = (file, type) => {
+  const config = uploadConfig[type]
+  
+  // 检查文件大小
+  if (file.size > config.maxSize) {
+    ElMessage.error(config.sizeErrorMsg)
+    return false
+  }
+  
+  // 检查文件类型
+  const fileType = file.type
+  if (!config.accept.includes(fileType)) {
+    ElMessage.error(config.typeErrorMsg)
+    return false
+  }
+  
+  // 检查文件数量限制
+  const filesRef = type === 'image' ? imageFiles : videoFiles
+  if (filesRef.value.length >= config.limit) {
+    ElMessage.error(config.limitErrorMsg)
+    return false
+  }
+  
+  return true
+}
+
+// 处理图片上传
+const handleImageUpload = (file) => {
+  if (validateFile(file, 'image')) {
+    imageFiles.value.push(file)
+    return false // 阻止自动上传
+  }
+  return false
+}
+
+// 处理视频上传
+const handleVideoUpload = (file) => {
+  if (validateFile(file, 'video')) {
+    videoFiles.value.push(file)
+    return false // 阻止自动上传
+  }
+  return false
+}
+
+// 删除图片
+const removeImage = (index) => {
+  imageFiles.value.splice(index, 1)
+}
+
+// 删除视频
+const removeVideo = (index) => {
+  videoFiles.value.splice(index, 1)
+}
+
+// 格式化文件大小
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+// 安全地获取图片预览URL
+const getObjectUrl = (file) => {
+  // 对于Vue组件中的文件预览，我们可以使用file.url属性
+  // 这是Element Plus上传组件内部处理的，不需要我们手动创建ObjectURL
+  if (file && file.url) {
+    return file.url;
+  }
+  // 如果没有url属性但有raw文件对象，返回空字符串避免错误
+  // 注意：在Vue 3的服务器端渲染中，我们应该避免使用浏览器特定的API
+  return '';
+}
 
 // 自定义验证函数
 const validateTitle = (rule, value, callback) => {
@@ -208,7 +368,28 @@ const submitForm = async () => {
   await strategyFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        await gameStore.createStrategy(strategyForm)
+        // 创建包含文件的FormData
+        const formData = new FormData()
+        
+        // 添加文本字段
+        formData.append('game_id', strategyForm.game_id)
+        formData.append('title', strategyForm.title)
+        formData.append('content', strategyForm.content)
+        formData.append('difficulty', strategyForm.difficulty)
+        formData.append('type', strategyForm.type)
+        formData.append('user_id', '1') // 测试环境使用固定用户ID
+        
+        // 添加图片文件
+        imageFiles.value.forEach(file => {
+          formData.append('images', file.raw)
+        })
+        
+        // 添加视频文件
+        videoFiles.value.forEach(file => {
+          formData.append('videos', file.raw)
+        })
+        
+        await gameStore.createStrategy(formData)
         ElMessage.success('攻略提交成功！')
         router.push(`/game/${strategyForm.game_id}`)
       } catch (error) {

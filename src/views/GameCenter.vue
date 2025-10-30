@@ -226,7 +226,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useGameStore } from '../stores/game'
-import { Plus, Search, View, Document } from '@element-plus/icons-vue'
+import { Plus, Search, View, Document, Star } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -405,7 +405,7 @@ watch(() => route.query, (newQuery) => {
 // 组件挂载时获取数据
 onMounted(async () => {
   await loadGames()
-})</script>
+});</script>
 
 <style scoped>
 .game-center {

@@ -2,7 +2,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from './server.js'; // Import User model from server.js
+import { supabase, mockData } from './server.js'; // Import supabase and mockData
 
 const router = express.Router();
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -34,9 +34,23 @@ router.post('/register', async (req, res) => {
   }
 
   try {
-    // Check if user already exists
-    const existingUser = await User.findOne({ where: { username } });
-    if (existingUser) {
+    // 首先检查用户是否已存在
+    let userExists = false;
+    try {
+      // 尝试从Supabase检查
+      const { data } = await supabase
+        .from('users')
+        .select('username')
+        .eq('username', username)
+        .single();
+      userExists = !!data;
+    } catch (error) {
+      console.warn('Supabase查询失败，检查模拟数据:', error.message);
+      // 检查模拟数据
+      userExists = mockData.users.some(u => u.username === username);
+    }
+    
+    if (userExists) {
       return res.status(409).json({ message: 'Username already taken' });
     }
 
@@ -44,12 +58,34 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create new user
-    const newUser = await User.create({
+    // 创建用户数据
+    const userData = {
       username,
       password: hashedPassword,
-      email,
-    });
+      email: email || null,
+      created_at: new Date(),
+      updated_at: new Date()
+    };
+
+    let newUser;
+    try {
+      // 尝试使用Supabase创建
+      const { data, error } = await supabase
+        .from('users')
+        .insert([userData])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      newUser = data;
+    } catch (error) {
+      console.warn('使用Supabase创建用户失败，使用模拟数据:', error.message);
+      
+      // 模拟数据创建
+      const newId = mockData.users.length + 1;
+      newUser = { ...userData, id: newId };
+      mockData.users.push(newUser);
+    }
 
     // Generate JWT token
     const token = jwt.sign({ id: newUser.id, username: newUser.username }, SECRET_KEY, { expiresIn: '1h' });
@@ -75,8 +111,28 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    // Find user
-    const user = await User.findOne({ where: { username } });
+    let user = null;
+    
+    // 尝试从Supabase查找用户
+    try {
+      const { data } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .single();
+      
+      if (data) {
+        user = data;
+      }
+    } catch (error) {
+      console.warn('Supabase查询失败，检查模拟数据:', error.message);
+    }
+    
+    // 如果Supabase中没有找到，尝试从模拟数据中查找
+    if (!user) {
+      user = mockData.users.find(u => u.username === username);
+    }
+    
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -129,14 +185,36 @@ router.get('/profile', authenticateToken, async (req, res) => {
 // Get current user info
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    // Fetch user info from database
-    const user = await User.findOne({ 
-      where: { id: req.user.id },
-      attributes: { exclude: ['password'] } // Exclude password from response
-    });
+    let user;
+    
+    // 尝试从Supabase获取用户信息
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', req.user.id)
+        .single();
+      
+      if (!error && data) {
+        // 排除密码字段
+        delete data.password;
+        user = data;
+      }
+    } catch (supabaseError) {
+      console.warn('使用Supabase获取用户信息失败，尝试使用模拟数据:', supabaseError.message);
+    }
+    
+    // 如果Supabase失败或未找到用户，尝试从模拟数据中查找
+    if (!user) {
+      user = mockData.users.find(u => u.id === req.user.id);
+      if (user) {
+        // 排除密码字段
+        delete user.password;
+      }
+    }
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: '用户不存在' });
     }
     
     res.json({
@@ -144,7 +222,7 @@ router.get('/me', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Get current user error:', error);
-    res.status(500).json({ message: 'Server error while fetching user info' });
+    res.status(500).json({ message: '获取用户信息失败' });
   }
 });
 
