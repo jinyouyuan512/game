@@ -125,6 +125,24 @@
             <article class="strategy-article">
               <div class="article-content" v-html="formattedContent"></div>
               
+              <!-- 攻略视频播放 - 已确认位于strategy-article内部，与正文共享宽度约束 -->
+              <div v-if="strategy.video_urls && Array.isArray(strategy.video_urls) && strategy.video_urls.length > 0" class="strategy-videos">
+                <h3 class="videos-title">攻略视频</h3>
+                <div class="videos-container">
+                  <div v-for="(video, index) in strategy.video_urls" :key="`video-${index}`" class="video-item">
+                    <video 
+                      :src="formatVideoUrl(video)" 
+                      controls 
+                      class="strategy-video"
+                      :alt="`攻略视频 ${index + 1}`"
+                      @error="handleVideoError($event, index)"
+                    >
+                      您的浏览器不支持HTML5视频播放。
+                    </video>
+                  </div>
+                </div>
+              </div>
+              
               <!-- 攻略图片展示 -->
               <div v-if="strategy.image_urls && strategy.image_urls.length > 0" class="strategy-images">
                 <h3 class="images-title">攻略图片</h3>
@@ -450,9 +468,30 @@ const generateSummary = async () => {
   try {
     summaryLoading.value = true
     
-    // 模拟AI摘要生成
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    // 调用后端真实AI摘要API
+    const response = await fetch('/api/ai/summarize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title: strategy.value.title,
+        content: strategy.value.content
+      })
+    })
     
+    if (!response.ok) {
+      throw new Error(`AI摘要API响应失败: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    aiSummary.value = data.summary
+    
+    ElMessage.success('AI摘要生成成功')
+  } catch (error) {
+    console.error('生成摘要失败，使用备用摘要:', error)
+    
+    // 备用摘要逻辑，确保在API调用失败时仍能提供服务
     aiSummary.value = `基于《${strategy.value.title}》攻略内容，AI为您总结以下要点：
     
 1. 核心策略：本攻略主要介绍了游戏中的关键玩法和技巧
@@ -462,10 +501,7 @@ const generateSummary = async () => {
 
 建议结合实际游戏情况灵活运用攻略内容。`
     
-    ElMessage.success('AI摘要生成成功')
-  } catch (error) {
-    console.error('生成摘要失败:', error)
-    ElMessage.error('生成摘要失败')
+    ElMessage.warning('使用备用摘要，真实AI服务暂时不可用')
   } finally {
     summaryLoading.value = false
   }
@@ -500,6 +536,133 @@ const copyLink = async () => {
 const handleImageError = (event) => {
   event.target.src = '/images/default-strategy.png';
   event.target.alt = '默认攻略图片';
+}
+
+// 处理视频加载错误
+const handleVideoError = (event, index) => {
+  console.warn(`视频 ${index + 1} 加载失败:`, event.target.src);
+  // 可以在这里添加用户友好的错误提示
+}
+
+// 格式化视频URL，修复编码问题
+const formatVideoUrl = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  
+  console.log('原始视频URL:', url);
+  
+  // 将日志发送到服务器，方便调试
+  fetch('http://localhost:3000/api/log', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      message: '前端视频URL处理',
+      originalUrl: url
+    })
+  }).catch(err => console.error('发送日志失败:', err));
+  
+  // 如果已经是完整URL，直接返回
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  
+  // 如果是相对路径，先处理转义字符，再拼接服务器地址
+  if (url.startsWith('/uploads/videos/')) {
+    let processedUrl = url;
+    
+    // 处理数据库中可能存在的转义字符
+    if (url.includes('\\x')) {
+      // 将类似 \xE5\xAE\x89 的转义序列转换为实际字符
+      processedUrl = url.replace(/\\x([0-9a-fA-F]{2})/g, (match, hex) => {
+        return String.fromCharCode(parseInt(hex, 16));
+      });
+    }
+    
+    // 处理可能存在的乱码字符
+    try {
+      // 尝试解码URL编码的字符
+      processedUrl = decodeURIComponent(processedUrl);
+    } catch (e) {
+      console.warn('URL解码失败:', e);
+    }
+    
+    const finalUrl = 'http://localhost:3000' + processedUrl;
+    console.log('处理后的视频URL:', finalUrl);
+    
+    // 将处理后的URL发送到服务器
+    fetch('http://localhost:3000/api/log', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: '前端视频URL处理结果',
+        originalUrl: url,
+        processedUrl: processedUrl,
+        finalUrl: finalUrl
+      })
+    }).catch(err => console.error('发送日志失败:', err));
+    
+    return finalUrl;
+  }
+  
+  // 如果是纯文件名，先解码URL编码的中文字符，再拼接完整路径
+  try {
+    // 处理数据库中可能存在的转义字符
+    let decodedUrl = url;
+    
+    // 首先尝试解码可能被转义的Unicode字符
+    if (url.includes('\\x')) {
+      // 将类似 \xE8\x9D\x8B 的转义序列转换为实际字符
+      decodedUrl = url.replace(/\\x([0-9a-fA-F]{2})/g, (match, hex) => {
+        return String.fromCharCode(parseInt(hex, 16));
+      });
+    }
+    
+    // 然后进行URL解码
+    decodedUrl = decodeURIComponent(decodedUrl);
+    
+    const finalUrl = 'http://localhost:3000/uploads/videos/' + decodedUrl;
+    console.log('处理后的视频URL:', finalUrl);
+    
+    // 将处理后的URL发送到服务器
+    fetch('http://localhost:3000/api/log', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: '前端视频URL处理结果',
+        originalUrl: url,
+        decodedUrl: decodedUrl,
+        finalUrl: finalUrl
+      })
+    }).catch(err => console.error('发送日志失败:', err));
+    
+    return finalUrl;
+  } catch (error) {
+    console.warn('视频URL解码失败:', error, '原始URL:', url);
+    // 如果解码失败，直接使用原始URL
+    const finalUrl = 'http://localhost:3000/uploads/videos/' + url;
+    console.log('使用原始URL:', finalUrl);
+    
+    // 将错误情况发送到服务器
+    fetch('http://localhost:3000/api/log', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: '前端视频URL处理失败',
+        originalUrl: url,
+        error: error.message,
+        finalUrl: finalUrl
+      })
+    }).catch(err => console.error('发送日志失败:', err));
+    
+    return finalUrl;
+  }
 }
 
 // 图片预览功能
@@ -544,6 +707,38 @@ onMounted(async () => {
   // 初始化目录高亮
   nextTick(() => {
     handleScroll()
+    
+    // 强制设置video标签宽度与article-content div标签完全一致
+    const articleContent = document.querySelector('.article-content')
+    const videos = document.querySelectorAll('.strategy-video')
+    
+    if (articleContent && videos.length > 0) {
+      // 获取article-content的实际宽度
+      const contentWidth = articleContent.offsetWidth
+      
+      // 设置所有video标签的宽度与article-content完全一致
+      videos.forEach(video => {
+        video.style.width = `${contentWidth}px`
+        video.style.maxWidth = `${contentWidth}px`
+        video.style.display = 'block'
+        video.style.boxSizing = 'border-box'
+      })
+      
+      // 监听窗口大小变化，重新调整video宽度
+      const resizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+          if (entry.target === articleContent) {
+            const newWidth = entry.contentRect.width
+            videos.forEach(video => {
+              video.style.width = `${newWidth}px`
+              video.style.maxWidth = `${newWidth}px`
+            })
+          }
+        }
+      })
+      
+      resizeObserver.observe(articleContent)
+    }
   })
 })
 
@@ -865,9 +1060,30 @@ onUnmounted(() => {
 }
 
 .article-content {
-  line-height: 1.8;
-  color: #000000; /* 修改为黑色 */
-}
+    line-height: 1.8;
+    color: #000000; /* 修改为黑色 */
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  /* 确保article-content中的所有图片都能响应式适应容器 - 增加优先级 */
+  .article-content :deep(img) {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+    overflow: hidden;
+  }
+  
+  /* 为strategy-article容器内的所有图片添加全局限制 */
+  .strategy-article img {
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    box-sizing: border-box !important;
+  }
 
 .article-content :deep(h1),
 .article-content :deep(h2),
@@ -1245,6 +1461,25 @@ onUnmounted(() => {
   .article-content {
     line-height: 1.7;
     font-size: 16px;
+    max-width: 100%;
+  }
+
+  /* 统一内容宽度 - 视频和正文共享相同的宽度约束 */
+  .strategy-article {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0;
+    position: relative;
+  }
+  
+  /* 确保strategy-videos与正文内容宽度完全一致 */
+  .strategy-article .strategy-videos {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 40px 0 0 0;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    position: relative;
   }
   
   .article-content :deep(h2) {
@@ -1255,6 +1490,78 @@ onUnmounted(() => {
   .article-content :deep(h3) {
     font-size: 1.3rem;
     margin: 20px 0 12px;
+  }
+  
+  /* 攻略视频样式 - 确保与article-content宽度一致 */
+  .strategy-videos {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 20px;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden;
+  }
+  
+  .videos-title {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: #00d4ff;
+  }
+  
+  .videos-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+  
+  .video-item {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+  
+  .video-item:hover {
+    transform: translateY(-3px);
+    border-color: #00d4ff;
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+  }
+  
+  /* 使用全局选择器强制video标签与article-content div宽度完全一致 */
+  .strategy-article .article-content,
+  .strategy-article .video-item video {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* 确保video标签没有任何额外的边距或内边距 */
+  .strategy-article .video-item {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+  }
+  
+  /* 强制video标签本身与article-content宽度一致 */
+  .strategy-article video {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
   }
   
   /* 攻略图片样式 */
@@ -1272,8 +1579,16 @@ onUnmounted(() => {
   
   .images-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
     gap: 15px;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  /* 确保grid项也能完全响应 */
+  .images-grid > * {
+    width: 100% !important;
+    height: auto !important;
   }
   
   .image-item {
@@ -1283,6 +1598,8 @@ onUnmounted(() => {
     transition: transform 0.3s ease;
     cursor: pointer;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
+    height: auto;
   }
   
   .image-item:hover {
@@ -1291,11 +1608,14 @@ onUnmounted(() => {
   }
   
   .strategy-image {
-    width: 100%;
-    height: 150px;
-    object-fit: cover;
-    display: block;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
+    display: block !important;
+    margin: 0 auto !important;
     transition: filter 0.3s ease;
+    box-sizing: border-box !important;
   }
   
   .image-item:hover .strategy-image {
@@ -1357,6 +1677,32 @@ onUnmounted(() => {
     .close-button {
       right: 10px;
       top: -40px;
+    }
+    
+    /* 视频响应式设计 */
+    .strategy-videos {
+      margin-top: 30px;
+    }
+    
+    .videos-title {
+      font-size: 18px;
+      margin-bottom: 15px;
+    }
+    
+    .video-item {
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* 图片响应式调整 */
+    .images-title {
+      font-size: 18px;
+      margin-bottom: 15px;
+    }
+    
+    .images-grid {
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
     }
   }
 }
