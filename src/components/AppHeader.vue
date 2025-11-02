@@ -46,6 +46,10 @@
               <span>好友系统</span>
             </el-menu-item>
           </el-sub-menu>
+          <el-menu-item index="/ai-chat">
+            <el-icon><ChatDotRound /></el-icon>
+            <span>AI助手</span>
+          </el-menu-item>
         </el-menu>
       </nav>
 
@@ -376,29 +380,30 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import {
-  Trophy,
-  House,
-  Grid,
-  Document,
-  ChatDotRound,
-  Bell,
-  User,
-  UserFilled,
-  Star,
-  Clock,
-  Setting,
-  SwitchButton,
-  ArrowDown,
-  Menu,
-  Sunny,
-  Moon,
-  InfoFilled,
-  WarningFilled,
-  SuccessFilled,
-  ChatRound,
-  Close,
-  Download
-} from '@element-plus/icons-vue'
+   Trophy,
+   House,
+   Grid,
+   Document,
+   ChatDotRound,
+   Bell,
+   User,
+   UserFilled,
+   Star,
+   Clock,
+   Setting,
+   SwitchButton,
+   ArrowDown,
+   Menu,
+   Sunny,
+   Moon,
+   InfoFilled,
+   WarningFilled,
+   SuccessFilled,
+   ChatRound,
+   Close,
+   Download,
+   Search
+ } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
