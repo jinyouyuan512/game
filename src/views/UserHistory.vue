@@ -60,41 +60,8 @@ const userStore = useUserStore()
 
 const loading = ref(false)
 
-// 模拟历史记录数据
-const historyItems = ref([
-  {
-    id: 1,
-    type: 'game',
-    title: '原神',
-    description: '开放世界冒险游戏',
-    image: 'https://picsum.photos/seed/genshin/200/120.jpg',
-    viewedAt: new Date('2023-12-10T14:30:00')
-  },
-  {
-    id: 2,
-    type: 'strategy',
-    title: '原神4.3版本深渊攻略',
-    description: '详细解析4.3版本深渊12层满星攻略',
-    image: 'https://picsum.photos/seed/strategy1/200/120.jpg',
-    viewedAt: new Date('2023-12-10T16:45:00')
-  },
-  {
-    id: 3,
-    type: 'game',
-    title: '塞尔达传说：王国之泪',
-    description: '开放世界冒险游戏',
-    image: 'https://picsum.photos/seed/zelda/200/120.jpg',
-    viewedAt: new Date('2023-12-09T10:20:00')
-  },
-  {
-    id: 4,
-    type: 'strategy',
-    title: '王国之泪神庙解谜攻略',
-    description: '全神庙位置及解谜方法详解',
-    image: 'https://picsum.photos/seed/zelda-strategy/200/120.jpg',
-    viewedAt: new Date('2023-12-09T15:30:00')
-  }
-])
+// 历史记录数据 - 将从API获取
+const historyItems = ref([])
 
 const getTypeLabel = (type) => {
   const typeMap = {
@@ -142,8 +109,8 @@ const removeHistoryItem = async (item) => {
       }
     )
     
-    // 这里应该调用API删除历史记录
-    // await userStore.removeHistoryItem(item.id)
+    // 调用API删除历史记录
+    await userStore.removeHistoryItem(item.id)
     
     // 从列表中移除
     const index = historyItems.value.findIndex(historyItem => historyItem.id === item.id)
@@ -169,8 +136,8 @@ const clearHistory = async () => {
       }
     )
     
-    // 这里应该调用API清空历史记录
-    // await userStore.clearHistory()
+    // 调用API清空历史记录
+    await userStore.clearHistory()
     
     // 清空列表
     historyItems.value = []
@@ -185,12 +152,9 @@ onMounted(async () => {
   if (userStore.isAuthenticated) {
     loading.value = true
     try {
-      // 这里应该调用API获取浏览历史
-      // const data = await userStore.getHistory()
-      // historyItems.value = data
-      
-      // 模拟加载延迟
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // 调用API获取浏览历史
+      const data = await userStore.getHistory()
+      historyItems.value = data
     } catch (error) {
       ElMessage.error('获取浏览历史失败')
     } finally {

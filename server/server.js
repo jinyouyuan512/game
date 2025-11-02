@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { initModels } from './models.js';
 const execPromise = promisify(exec);
 
 const app = express();
@@ -845,8 +846,93 @@ const Sequelize = {
 };
 
 const sequelize = {
-  Sequelize
+  Sequelize,
+  define: (modelName, attributes, options = {}) => {
+    // 返回模拟的模型对象
+    return {
+      findOne: async (options) => null,
+      findAll: async (options) => [],
+      create: async (data) => ({ id: Date.now(), ...data }),
+      destroy: async (options) => 0,
+      count: async (options) => 0,
+      findByPk: async (id) => null,
+      attributes,
+      options
+    };
+  }
 };
+
+// 初始化模型
+let models = {};
+try {
+  models = initModels(sequelize);
+  // 添加Sequelize引用到models对象，便于查询操作符使用
+  models.Sequelize = Sequelize;
+} catch (error) {
+  console.warn('初始化模型时出错，但服务器将继续运行:', error.message);
+}
+
+// 添加管理员相关模型
+models.Admin = {
+  findOne: async (options) => {
+    try {
+      // 如果使用用户名查询且是admin，则返回默认管理员
+      if (options.where && options.where.username === 'admin') {
+        // 为了简化验证，我们可以直接硬编码密码验证逻辑
+        // 在实际环境中，这里应该返回正确的bcrypt哈希
+        const admin = {
+          id: 1,
+          username: 'admin',
+          password: 'admin123', // 注意：这是明文密码，仅用于调试
+          email: 'admin@example.com',
+          role: 'superadmin',
+          status: 'active',
+          created_at: new Date(),
+          // 添加一个特殊方法用于调试
+          _verifyPassword: function(password) {
+            return password === 'admin123';
+          }
+        };
+        return admin;
+      }
+      return null;
+    } catch (error) {
+      console.error('查询管理员时出错:', error.message);
+      return null;
+    }
+  }
+};
+
+models.AdminSession = {
+  create: async (data) => {
+    try {
+      // 记录会话到日志
+      console.log('创建管理员会话:', data);
+      return { id: Date.now(), ...data };
+    } catch (error) {
+      console.error('创建管理员会话时出错:', error.message);
+      throw error;
+    }
+  }
+};
+
+models.AdminLog = {
+  create: async (data) => {
+    try {
+      // 记录日志
+      console.log('创建管理员操作日志:', data);
+      return { id: Date.now(), ...data };
+    } catch (error) {
+      console.error('创建管理员日志时出错:', error.message);
+      throw error;
+    }
+  }
+};
+
+// 获取模型的函数
+export function getModels() {
+  return models;
+}
 
 // 执行数据库迁移
 async function executeDatabaseMigrations() {
@@ -944,50 +1030,248 @@ app.get('/', (req, res) => {
   res.send('You Backend Server is Running!');
 });
 
-// Search API Route
+// Search API Route - 增强版搜索API
 app.get('/api/search', async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, type, page = 1, limit = 20, sort = 'relevance' } = req.query;
+    
     if (!q || q.trim() === '') {
-      return res.json({ games: [], strategies: [] });
+      return res.json({ games: [], strategies: [], total: { games: 0, strategies: 0 } });
     }
     
     // 搜索关键词处理
     const searchTerm = q.trim().toLowerCase();
     
-    // 构建搜索条件
-    const searchCondition = {
-      [Sequelize.Op.or]: [
-        { name: { like: `%${searchTerm}%` } },
-        { description: { like: `%${searchTerm}%` } }
-      ]
+    // 记录搜索日志（用于热门搜索分析）
+    try {
+      await supabase.from('search_logs').insert({
+        keyword: searchTerm,
+        user_id: req.user?.id || null,
+        search_type: type || 'all',
+        created_at: new Date()
+      });
+    } catch (logError) {
+      console.warn('记录搜索日志失败:', logError.message);
+    }
+    
+    // 初始化结果对象
+    const results = {
+      games: [],
+      strategies: [],
+      total: { games: 0, strategies: 0 }
     };
     
-    // 搜索游戏
-    const games = await Game.findAll({ where: searchCondition });
+    // 计算偏移量
+    const offset = (parseInt(page) - 1) * parseInt(limit);
     
-    // 构建攻略搜索条件
-    const strategySearchCondition = {
-      [Sequelize.Op.or]: [
-        { title: { like: `%${searchTerm}%` } },
-        { content: { like: `%${searchTerm}%` } }
-      ]
-    };
+    // 搜索游戏（如果类型允许）
+    if (!type || type === 'all' || type === 'games') {
+      // 使用Supabase进行搜索
+      let gamesQuery = supabase
+        .from('games')
+        .select('*', { count: 'exact' })
+        .or(
+          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,developer.ilike.%${searchTerm}%`
+        )
+        .order('created_at', { ascending: false });
+      
+      // 排序选项
+      if (sort === 'popularity') {
+        gamesQuery = gamesQuery.order('view_count', { ascending: false, nullsLast: true });
+      } else if (sort === 'newest') {
+        gamesQuery = gamesQuery.order('created_at', { ascending: false });
+      }
+      
+      // 分页
+      const { data: games, count, error: gamesError } = await gamesQuery
+        .range(offset, offset + parseInt(limit) - 1);
+      
+      if (gamesError) {
+        console.error('搜索游戏失败:', gamesError);
+      } else {
+        results.games = games || [];
+        results.total.games = count || 0;
+      }
+    }
     
-    // 搜索攻略
-    let strategies = await Strategy.findAll({ where: strategySearchCondition });
+    // 搜索攻略（如果类型允许）
+    if (!type || type === 'all' || type === 'strategies') {
+      // 使用Supabase进行搜索
+      let strategiesQuery = supabase
+        .from('strategies')
+        .select('*, games:game_id(name)')
+        .or(
+          `title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`
+        )
+        .order('created_at', { ascending: false });
+      
+      // 排序选项
+      if (sort === 'popularity') {
+        strategiesQuery = strategiesQuery.order('view_count', { ascending: false, nullsLast: true });
+      } else if (sort === 'newest') {
+        strategiesQuery = strategiesQuery.order('created_at', { ascending: false });
+      }
+      
+      // 分页
+      const { data: strategies, error: strategiesError } = await strategiesQuery
+        .range(offset, offset + parseInt(limit) - 1);
+      
+      if (strategiesError) {
+        console.error('搜索攻略失败:', strategiesError);
+      } else {
+        // 确保攻略返回image_urls和video_urls字段
+        results.strategies = (strategies || []).map(strategy => ({
+          ...strategy,
+          image_urls: strategy.image_urls || [],
+          video_urls: strategy.video_urls || []
+        }));
+        
+        // 获取攻略总数
+        const { count: strategiesCount } = await supabase
+          .from('strategies')
+          .select('*', { count: 'exact' })
+          .or(
+            `title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`
+          );
+        
+        results.total.strategies = strategiesCount || 0;
+      }
+    }
     
-    // 确保攻略返回image_urls和video_urls字段
-    strategies = strategies.map(strategy => ({
-      ...strategy,
-      image_urls: strategy.image_urls || [],
-      video_urls: strategy.video_urls || []
-    }));
-    
-    res.json({ games, strategies });
+    res.json(results);
   } catch (error) {
     console.error('搜索失败:', error);
     res.status(500).json({ error: '搜索失败', details: error.message });
+  }
+});
+
+// 搜索建议API
+app.get('/api/search/suggestions', async (req, res) => {
+  try {
+    const { q, limit = 5 } = req.query;
+    
+    if (!q || q.trim() === '') {
+      return res.json({ games: [], strategies: [] });
+    }
+    
+    const searchTerm = q.trim().toLowerCase();
+    const results = { games: [], strategies: [] };
+    
+    // 获取游戏建议
+    const { data: games, error: gamesError } = await supabase
+      .from('games')
+      .select('id, name, category, developer')
+      .or(
+        `name.ilike.%${searchTerm}%,developer.ilike.%${searchTerm}%`
+      )
+      .order('view_count', { ascending: false, nullsLast: true })
+      .limit(parseInt(limit));
+    
+    if (!gamesError) {
+      results.games = games || [];
+    }
+    
+    // 获取攻略建议
+    const { data: strategies, error: strategiesError } = await supabase
+      .from('strategies')
+      .select('id, title, game_id, user_id')
+      .or(
+        `title.ilike.%${searchTerm}%`
+      )
+      .order('view_count', { ascending: false, nullsLast: true })
+      .limit(parseInt(limit));
+    
+    if (!strategiesError && strategies && strategies.length > 0) {
+      // 获取对应的游戏名称
+      const gameIds = [...new Set(strategies.map(s => s.game_id))];
+      const { data: gamesData } = await supabase
+        .from('games')
+        .select('id, name')
+        .in('id', gameIds);
+      
+      const gameMap = {};
+      gamesData?.forEach(game => {
+        gameMap[game.id] = game.name;
+      });
+      
+      // 获取作者信息
+      const userIds = [...new Set(strategies.map(s => s.user_id))];
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, username')
+        .in('id', userIds);
+      
+      const userMap = {};
+      usersData?.forEach(user => {
+        userMap[user.id] = user.username;
+      });
+      
+      // 格式化攻略建议
+      results.strategies = strategies.map(strategy => ({
+        ...strategy,
+        game_name: gameMap[strategy.game_id] || '未知游戏',
+        author: userMap[strategy.user_id] || '未知用户'
+      }));
+    }
+    
+    res.json(results);
+  } catch (error) {
+    console.error('获取搜索建议失败:', error);
+    res.status(500).json({ error: '获取搜索建议失败' });
+  }
+});
+
+// 热门搜索API
+app.get('/api/search/hot', async (req, res) => {
+  try {
+    const { limit = 10, days = 7 } = req.query;
+    
+    // 计算时间范围
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+    
+    // 从搜索日志中获取热门搜索词
+    const { data, error } = await supabase
+      .from('search_logs')
+      .select('keyword, count(keyword) as search_count')
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
+      .group('keyword')
+      .order('search_count', { ascending: false })
+      .limit(parseInt(limit));
+    
+    if (error) {
+      console.error('获取热门搜索失败:', error);
+      // 如果搜索日志表不存在或出错，返回默认热门搜索
+      return res.json({
+        hot_searches: ['原神', '王者荣耀', '塞尔达传说', '我的世界', '艾尔登法环', '英雄联盟', '绝地求生', 'CS2', 'GTA6', '星空']
+      });
+    }
+    
+    // 返回热门搜索词
+    const hotSearches = data?.map(item => item.keyword) || [];
+    
+    // 如果没有足够的数据，补充默认值
+    if (hotSearches.length < parseInt(limit)) {
+      const defaultHotSearches = ['原神', '王者荣耀', '塞尔达传说', '我的世界', '艾尔登法环'];
+      defaultHotSearches.forEach(term => {
+        if (!hotSearches.includes(term)) {
+          hotSearches.push(term);
+          if (hotSearches.length >= parseInt(limit)) {
+            return;
+          }
+        }
+      });
+    }
+    
+    res.json({ hot_searches: hotSearches.slice(0, parseInt(limit)) });
+  } catch (error) {
+    console.error('获取热门搜索失败:', error);
+    res.status(500).json({ 
+      error: '获取热门搜索失败',
+      hot_searches: ['原神', '王者荣耀', '塞尔达传说', '我的世界', '艾尔登法环']
+    });
   }
 });
 
@@ -1143,12 +1427,20 @@ import { authRouter } from './auth.js';
 import { dataRouter } from './data.js';
 import { gamesRouter, addSampleData } from './games.js';
 import { strategiesRouter } from './strategies.js';
+import { communityRouter } from './community.js';
+import { friendsRouter } from './friends.js';
+import userDataRouter from './user_data.js';
+import adminRouter from './admin.js';
 
 // Use Routers
 app.use('/api/auth', authRouter);
 app.use('/api/data', dataRouter);
 app.use('/', gamesRouter);
 app.use('/', strategiesRouter);
+app.use('/', communityRouter);
+app.use('/', friendsRouter);
+app.use('/api/user', userDataRouter);
+app.use('/api/admin', adminRouter);
 
 // Start Server
 async function startServer() {

@@ -189,7 +189,21 @@ export const useGameStore = defineStore('game', {
       
       try {
         const response = await apiClient.get(`/api/strategies/${id}${incrementViews ? '?increment_views=true' : ''}`)
-        this.currentStrategy = response.data || response
+        // 处理响应数据结构，兼容两种格式
+        // 服务器返回格式: { success: true, data: {...}, message: '...', mediaStats: {...} }
+        // 确保获取到正确的数据结构
+        const responseData = response.data || response
+        const strategyData = responseData.data || responseData
+        
+        // 确保video_urls和image_urls字段存在
+        if (!strategyData.video_urls) {
+          strategyData.video_urls = []
+        }
+        if (!strategyData.image_urls) {
+          strategyData.image_urls = []
+        }
+        
+        this.currentStrategy = strategyData
         
         // 同时获取相关标签
         if (!this.tags.length) {

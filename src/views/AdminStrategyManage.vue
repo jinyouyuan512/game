@@ -380,7 +380,7 @@ const toggleStatus = async (strategy) => {
 const deleteStrategy = async (strategy) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除攻略 "${strategy.title}" 吗？此操作不可恢复！`,
+      `确定要删除攻略 "${strategy.title}" 吗？此操作不可恢复！删除后将同时删除所有关联的图片、视频和标签。`,
       '确认删除',
       {
         confirmButtonText: '确定',
@@ -389,18 +389,25 @@ const deleteStrategy = async (strategy) => {
       }
     )
     
-    const { error } = await supabase
-      .from('strategies')
-      .delete()
-      .eq('id', strategy.id)
+    // 使用后端API删除攻略
+    const response = await fetch(`/api/strategies/${strategy.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
     
-    if (error) throw error
+    const result = await response.json()
     
-    ElMessage.success('删除成功')
+    if (!result.success) {
+      throw new Error(result.error || '删除失败')
+    }
+    
+    ElMessage.success(`删除成功，已清理 ${result.data.mediaDeleted.images} 张图片和 ${result.data.mediaDeleted.videos} 个视频`)
     await loadStrategies()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(error.message || '删除失败')
     }
   }
 }

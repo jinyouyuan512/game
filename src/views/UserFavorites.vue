@@ -63,33 +63,8 @@ const userStore = useUserStore()
 const loading = ref(false)
 const filterType = ref('')
 
-// 模拟收藏数据
-const favorites = ref([
-  {
-    id: 1,
-    type: 'game',
-    title: '原神',
-    description: '开放世界冒险游戏',
-    image: 'https://picsum.photos/seed/genshin/200/120.jpg',
-    createdAt: new Date('2023-10-15')
-  },
-  {
-    id: 2,
-    type: 'strategy',
-    title: '原神4.3版本深渊攻略',
-    description: '详细解析4.3版本深渊12层满星攻略',
-    image: 'https://picsum.photos/seed/strategy1/200/120.jpg',
-    createdAt: new Date('2023-11-20')
-  },
-  {
-    id: 3,
-    type: 'game',
-    title: '塞尔达传说：王国之泪',
-    description: '开放世界冒险游戏',
-    image: 'https://picsum.photos/seed/zelda/200/120.jpg',
-    createdAt: new Date('2023-12-05')
-  }
-])
+// 收藏数据 - 将从API获取
+const favorites = ref([])
 
 // 过滤后的收藏列表
 const filteredFavorites = computed(() => {
@@ -135,8 +110,8 @@ const removeFavorite = async (item) => {
       }
     )
     
-    // 这里应该调用API取消收藏
-    // await userStore.removeFavorite(item.id)
+    // 调用API取消收藏
+    await userStore.removeFavorite(item.id)
     
     // 从列表中移除
     const index = favorites.value.findIndex(fav => fav.id === item.id)
@@ -154,12 +129,9 @@ onMounted(async () => {
   if (userStore.isAuthenticated) {
     loading.value = true
     try {
-      // 这里应该调用API获取收藏列表
-      // const data = await userStore.getFavorites()
-      // favorites.value = data
-      
-      // 模拟加载延迟
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // 调用API获取收藏列表
+      const data = await userStore.getFavorites()
+      favorites.value = data
     } catch (error) {
       ElMessage.error('获取收藏列表失败')
     } finally {

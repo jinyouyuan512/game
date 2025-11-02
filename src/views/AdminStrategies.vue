@@ -472,7 +472,7 @@ const saveStrategy = async () => {
 const deleteStrategy = async (strategy) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除攻略 "${strategy.title}" 吗？此操作不可恢复。`,
+      `确定要删除攻略 "${strategy.title}" 吗？此操作不可恢复！删除后将同时删除所有关联的图片、视频和标签。`,
       '确认删除',
       {
         confirmButtonText: '确定',
@@ -483,21 +483,21 @@ const deleteStrategy = async (strategy) => {
 
     loading.value = true
 
-    // 先删除标签关联
-    await supabase
-      .from('strategy_tags')
-      .delete()
-      .eq('strategy_id', strategy.id)
+    // 使用后端API删除攻略
+    const response = await fetch(`/api/strategies/${strategy.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    const result = await response.json()
+    
+    if (!result.success) {
+      throw new Error(result.error || '删除失败')
+    }
 
-    // 删除攻略
-    const { error } = await supabase
-      .from('strategies')
-      .delete()
-      .eq('id', strategy.id)
-
-    if (error) throw error
-
-    ElMessage.success('攻略删除成功')
+    ElMessage.success(`攻略删除成功，已清理 ${result.data.mediaDeleted.images} 张图片和 ${result.data.mediaDeleted.videos} 个视频`)
     await gameStore.fetchStrategies()
 
   } catch (error) {

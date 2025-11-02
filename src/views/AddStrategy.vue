@@ -220,10 +220,10 @@ const uploadConfig = {
     name: 'videos',
     accept: ['video/mp4', 'video/avi', 'video/quicktime'],
     maxSize: 50 * 1024 * 1024, // 50MB
-    limit: 5,
+    limit: 1,
     sizeErrorMsg: '视频大小不能超过50MB',
     typeErrorMsg: '只支持MP4、AVI和MOV格式的视频',
-    limitErrorMsg: '最多只能上传5个视频'
+    limitErrorMsg: '最多只能上传1个视频'
   }
 }
 
@@ -255,32 +255,50 @@ const validateFile = (file, type) => {
 }
 
 // 处理图片上传
-const handleImageUpload = (file) => {
-  if (validateFile(file, 'image')) {
-    imageFiles.value.push(file)
-    return false // 阻止自动上传
+const handleImageUpload = (file, fileList) => {
+  // 验证文件
+  if (!validateFile(file, 'image')) {
+    return false // 验证失败，不添加到文件列表
   }
-  return false
-}
+  
+  // 自动生成预览URL
+  if (file.raw && typeof window !== 'undefined' && window.URL) {
+    try {
+      file.url = URL.createObjectURL(file.raw);
+    } catch (error) {
+      console.error('创建图片预览失败:', error);
+    }
+  }
+  
+  // Element Plus的v-model:file-list会自动添加文件
+  return false; // 阻止自动上传
+};
 
 // 处理视频上传
-const handleVideoUpload = (file) => {
-  if (validateFile(file, 'video')) {
-    videoFiles.value.push(file)
-    return false // 阻止自动上传
+const handleVideoUpload = (file, fileList) => {
+  // 验证文件
+  if (!validateFile(file, 'video')) {
+    return false // 验证失败，不添加到文件列表
   }
-  return false
-}
+  
+  // Element Plus的v-model:file-list会自动添加文件
+  return false; // 阻止自动上传
+};
 
 // 删除图片
 const removeImage = (index) => {
-  imageFiles.value.splice(index, 1)
-}
+  const file = imageFiles.value[index];
+  // 释放预览URL以避免内存泄漏
+  if (file && file.url && file.url.startsWith('blob:') && typeof window !== 'undefined' && window.URL) {
+    URL.revokeObjectURL(file.url);
+  }
+  imageFiles.value.splice(index, 1);
+};
 
 // 删除视频
 const removeVideo = (index) => {
-  videoFiles.value.splice(index, 1)
-}
+  videoFiles.value.splice(index, 1);
+};
 
 // 格式化文件大小
 const formatFileSize = (bytes) => {
@@ -293,15 +311,36 @@ const formatFileSize = (bytes) => {
 
 // 安全地获取图片预览URL
 const getObjectUrl = (file) => {
-  // 对于Vue组件中的文件预览，我们可以使用file.url属性
-  // 这是Element Plus上传组件内部处理的，不需要我们手动创建ObjectURL
-  if (file && file.url) {
-    return file.url;
+  if (file) {
+    // 优先使用Element Plus提供的url属性
+    if (file.url) {
+      return file.url;
+    }
+    // 对于本地选择的文件，使用URL.createObjectURL创建预览
+    if (file.raw && typeof window !== 'undefined' && window.URL) {
+      try {
+        return URL.createObjectURL(file.raw);
+      } catch (error) {
+        console.error('创建预览URL失败:', error);
+        return '';
+      }
+    }
   }
-  // 如果没有url属性但有raw文件对象，返回空字符串避免错误
-  // 注意：在Vue 3的服务器端渲染中，我们应该避免使用浏览器特定的API
   return '';
-}
+};
+
+// 组件卸载时释放ObjectURL
+import { onUnmounted } from 'vue';
+onUnmounted(() => {
+  // 清理所有预览URL以避免内存泄漏
+  if (typeof window !== 'undefined' && window.URL) {
+    imageFiles.value.forEach(file => {
+      if (file.url && file.url.startsWith('blob:')) {
+        URL.revokeObjectURL(file.url);
+      }
+    });
+  }
+});
 
 // 自定义验证函数
 const validateTitle = (rule, value, callback) => {
@@ -369,53 +408,92 @@ const submitForm = async () => {
     if (valid) {
       try {
         // 创建包含文件的FormData
-        const formData = new FormData()
+        const formData = new FormData();
         
         // 添加文本字段
-        formData.append('game_id', strategyForm.game_id)
-        formData.append('title', strategyForm.title)
-        formData.append('content', strategyForm.content)
-        formData.append('difficulty', strategyForm.difficulty)
-        formData.append('type', strategyForm.type)
-        formData.append('user_id', '1') // 测试环境使用固定用户ID
+        formData.append('game_id', strategyForm.game_id);
+        formData.append('title', strategyForm.title);
+        formData.append('content', strategyForm.content);
+        formData.append('difficulty', strategyForm.difficulty);
+        formData.append('type', strategyForm.type);
+        formData.append('user_id', '1'); // 测试环境使用固定用户ID
+        
+        // 验证文件数量
+        if (imageFiles.value.length === 0 && videoFiles.value.length === 0) {
+          ElMessage.warning('建议至少上传一张图片或视频来丰富攻略内容');
+          // 仍然允许提交，但给用户提示
+        }
         
         // 添加图片文件
         imageFiles.value.forEach(file => {
-          formData.append('images', file.raw)
-        })
+          if (file.raw) {
+            formData.append('images', file.raw);
+          }
+        });
         
         // 添加视频文件
         videoFiles.value.forEach(file => {
-          formData.append('videos', file.raw)
-        })
+          if (file.raw) {
+            formData.append('videos', file.raw);
+          }
+        });
         
-        await gameStore.createStrategy(formData)
-        ElMessage.success('攻略提交成功！')
-        router.push(`/game/${strategyForm.game_id}`)
+        ElMessage.info(`开始上传：${imageFiles.value.length}张图片，${videoFiles.value.length}个视频`);
+        
+        const result = await gameStore.createStrategy(formData);
+        
+        // 清理预览URL以避免内存泄漏
+        if (typeof window !== 'undefined' && window.URL) {
+          imageFiles.value.forEach(file => {
+            if (file.url && file.url.startsWith('blob:')) {
+              URL.revokeObjectURL(file.url);
+            }
+          });
+        }
+        
+        ElMessage.success('攻略提交成功！');
+        router.push(`/game/${strategyForm.game_id}`);
       } catch (error) {
         // 根据错误类型显示不同的提示
         if (error.type === 'unauthorized') {
-          ElMessage.error('未授权，请先登录')
-          router.push('/login')
+          ElMessage.error('未授权，请先登录');
+          router.push('/login');
         } else if (error.type === 'network_error') {
-          ElMessage.error('网络连接失败，请检查网络设置')
+          ElMessage.error('网络连接失败，请检查网络设置');
         } else if (error.statusCode === 400) {
-          ElMessage.warning(error.message || '请检查填写的信息')
+          ElMessage.warning(error.message || '请检查填写的信息');
         } else if (error.statusCode === 404) {
-          ElMessage.warning('选择的游戏不存在')
+          ElMessage.warning('选择的游戏不存在');
+        } else if (error.message && error.message.includes('文件大小')) {
+          ElMessage.error('文件大小超过限制，请检查上传的文件');
+        } else if (error.message && error.message.includes('文件类型')) {
+          ElMessage.error('不支持的文件类型，请检查上传的文件');
         } else {
-          ElMessage.error(error.message || '提交攻略失败，请稍后重试')
+          ElMessage.error(error.message || '提交攻略失败，请稍后重试');
         }
-        console.error('提交攻略失败:', error)
+        console.error('提交攻略失败:', error);
       }
     }
-  })
-}
+  });
+};
 
 // 重置表单
 const resetForm = () => {
-  strategyFormRef.value.resetFields()
-}
+  strategyFormRef.value.resetFields();
+  
+  // 清理图片预览URL
+  if (typeof window !== 'undefined' && window.URL) {
+    imageFiles.value.forEach(file => {
+      if (file.url && file.url.startsWith('blob:')) {
+        URL.revokeObjectURL(file.url);
+      }
+    });
+  }
+  
+  // 清空文件列表
+  imageFiles.value = [];
+  videoFiles.value = [];
+};
 
 // 返回
 const goBack = () => {

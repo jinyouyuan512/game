@@ -197,6 +197,118 @@ export const useUserStore = defineStore('user', () => {
     }
   }
   
+  // 收藏相关方法
+  const getFavorites = async () => {
+    if (!token.value) throw new Error('未登录')
+    
+    try {
+      const response = await axios.get(`${API_BASE_URL}/user/favorites`)
+      if (response.status === 200 && response.data) {
+        return response.data
+      }
+      throw new Error('获取收藏列表失败')
+    } catch (err) {
+      let errorMessage = '获取收藏列表失败'
+      if (err.response) {
+        errorMessage = err.response.data?.message || `服务器错误 (${err.response.status})`
+      } else if (err.request) {
+        errorMessage = '网络连接失败'
+      } else {
+        errorMessage = err.message || '未知错误'
+      }
+      throw new Error(errorMessage)
+    }
+  }
+  
+  const removeFavorite = async (favoriteId) => {
+    if (!token.value) throw new Error('未登录')
+    
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/user/favorites/${favoriteId}`)
+      if (response.status === 204) {
+        return true
+      }
+      throw new Error('取消收藏失败')
+    } catch (err) {
+      let errorMessage = '取消收藏失败'
+      if (err.response) {
+        errorMessage = err.response.data?.message || `服务器错误 (${err.response.status})`
+      } else if (err.request) {
+        errorMessage = '网络连接失败'
+      } else {
+        errorMessage = err.message || '未知错误'
+      }
+      throw new Error(errorMessage)
+    }
+  }
+  
+  // 浏览历史相关方法
+  const getHistory = async () => {
+    if (!token.value) throw new Error('未登录')
+    
+    try {
+      const response = await axios.get(`${API_BASE_URL}/user/history`)
+      if (response.status === 200 && response.data) {
+        return response.data
+      }
+      throw new Error('获取浏览历史失败')
+    } catch (err) {
+      let errorMessage = '获取浏览历史失败'
+      if (err.response) {
+        errorMessage = err.response.data?.message || `服务器错误 (${err.response.status})`
+      } else if (err.request) {
+        errorMessage = '网络连接失败'
+      } else {
+        errorMessage = err.message || '未知错误'
+      }
+      throw new Error(errorMessage)
+    }
+  }
+  
+  const removeHistoryItem = async (historyId) => {
+    if (!token.value) throw new Error('未登录')
+    
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/user/history/${historyId}`)
+      if (response.status === 204) {
+        return true
+      }
+      throw new Error('删除浏览记录失败')
+    } catch (err) {
+      let errorMessage = '删除浏览记录失败'
+      if (err.response) {
+        errorMessage = err.response.data?.message || `服务器错误 (${err.response.status})`
+      } else if (err.request) {
+        errorMessage = '网络连接失败'
+      } else {
+        errorMessage = err.message || '未知错误'
+      }
+      throw new Error(errorMessage)
+    }
+  }
+  
+  const clearHistory = async () => {
+    if (!token.value) throw new Error('未登录')
+    
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/user/history`)
+      if (response.status === 204) {
+        return true
+      }
+      throw new Error('清空浏览历史失败')
+    } catch (err) {
+      let errorMessage = '清空浏览历史失败'
+      if (err.response) {
+        errorMessage = err.response.data?.message || `服务器错误 (${err.response.status})`
+      } else if (err.request) {
+        errorMessage = '网络连接失败'
+      } else {
+        errorMessage = err.message || '未知错误'
+      }
+      throw new Error(errorMessage)
+    }
+  }
+  
   return {
     // 状态
     user,
@@ -213,6 +325,11 @@ export const useUserStore = defineStore('user', () => {
     register,
     logout,
     fetchUserProfile,
-    initializeAuth
+    initializeAuth,
+    getFavorites,
+    removeFavorite,
+    getHistory,
+    removeHistoryItem,
+    clearHistory
   }
 })

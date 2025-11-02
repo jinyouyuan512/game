@@ -118,30 +118,37 @@ const handleInput = async () => {
   }
 
   try {
-    // 搜索游戏
-    const { data: games, error: gamesError } = await supabase
-      .from('games')
-      .select('*')
-      .ilike('name', `%${searchQuery.value}%`)
-      .limit(5)
-
-    if (gamesError) throw gamesError
-    gameSuggestions.value = games || []
-
-    // 搜索攻略
-    const { data: strategies, error: strategiesError } = await supabase
-      .from('strategies')
-      .select(`
-        *,
-        games:game_id(name)
-      `)
-      .ilike('title', `%${searchQuery.value}%`)
-      .limit(5)
-
-    if (strategiesError) throw strategiesError
-    strategySuggestions.value = strategies || []
+    // 调用后端搜索建议API
+    const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(searchQuery.value)}&limit=5`)
+    const data = await response.json()
+    
+    if (data.games) {
+      gameSuggestions.value = data.games
+    }
+    
+    if (data.strategies) {
+      strategySuggestions.value = data.strategies
+    }
   } catch (error) {
     console.error('搜索建议失败:', error)
+    // 如果API调用失败，回退到本地模拟数据
+    gameSuggestions.value = []
+    strategySuggestions.value = []
+  }
+}
+
+// 获取热门搜索标签
+const fetchHotSearches = async () => {
+  try {
+    const response = await fetch('/api/search/hot?limit=10')
+    const data = await response.json()
+    
+    if (data.hot_searches && data.hot_searches.length > 0) {
+      hotTags.value = data.hot_searches
+    }
+  } catch (error) {
+    console.error('获取热门搜索失败:', error)
+    // 保持默认热门搜索标签
   }
 }
 
@@ -231,6 +238,9 @@ onMounted(() => {
   if (history) {
     searchHistory.value = JSON.parse(history)
   }
+  
+  // 获取热门搜索
+  fetchHotSearches()
   
   // 添加点击外部关闭事件监听
   document.addEventListener('click', handleClickOutside)

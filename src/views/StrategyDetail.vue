@@ -1,10 +1,20 @@
 <template>
-  <div class="strategy-detail" v-loading="loading">
-    <div v-if="strategy" class="strategy-content">
+  <div class="strategy-detail" 
+       v-loading="loading"
+       :class="{
+         'platform-pc': currentPlatform === 'pc',
+         'platform-mobile': currentPlatform === 'mobile',
+         'platform-console': currentPlatform === 'console',
+         'orientation-landscape': currentOrientation === 'landscape',
+         'orientation-portrait': currentOrientation === 'portrait',
+         'interaction-touch': interactionMode === 'touch',
+         'interaction-pointer': interactionMode === 'pointer'
+       }">
+    <div v-if="strategy" class="strategy-content orientation-responsive">
       <!-- 攻略头部信息 -->
       <div class="strategy-header">
         <div class="container">
-          <div class="header-content">
+          <div class="header-content orientation-responsive">
             <div class="breadcrumb">
               <el-breadcrumb separator="/">
                 <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
@@ -262,26 +272,49 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGameStore } from '../stores/game'
 import { ElMessage } from 'element-plus'
 import AIAnalyzer from '../components/AIAnalyzer.vue'
+import deviceDetectionService from '../services/DeviceDetectionService'
 
 const route = useRoute()
 const router = useRouter()
 const gameStore = useGameStore()
 
-const loading = ref(true)
 const strategy = ref(null)
+const loading = ref(true)
+const error = ref(null)
 const aiSummary = ref('')
 const summaryLoading = ref(false)
-const tocItems = ref([])
+const showAISummary = ref(false)
 const activeSection = ref('')
 const relatedStrategies = ref([])
 const previewImages = ref([])
 const previewVisible = ref(false)
 const previewIndex = ref(0)
+
+// 设备信息响应式状态
+const currentPlatform = ref(deviceDetectionService.getCurrentPlatform())
+const currentOrientation = ref(deviceDetectionService.getCurrentOrientation())
+const interactionMode = ref(deviceDetectionService.getInteractionMode())
+
+// 监听设备变化
+watch(() => deviceDetectionService.getCurrentPlatform(), (newPlatform) => {
+  currentPlatform.value = newPlatform
+  console.log('平台变化:', newPlatform)
+})
+
+watch(() => deviceDetectionService.getCurrentOrientation(), (newOrientation) => {
+  currentOrientation.value = newOrientation
+  console.log('方向变化:', newOrientation)
+})
+
+watch(() => deviceDetectionService.getInteractionMode(), (newMode) => {
+  interactionMode.value = newMode
+  console.log('交互模式变化:', newMode)
+})
 
 // 计算属性
 const formattedContent = computed(() => {
@@ -1622,7 +1655,84 @@ onUnmounted(() => {
     filter: brightness(1.1);
   }
   
-  /* 图片预览样式 */
+  /* 平台特定样式优化 */
+/* PC平台优化 */
+.platform-pc .strategy-body {
+  padding: 60px 0;
+}
+
+.platform-pc .content-wrapper {
+  grid-template-columns: 1fr 320px;
+  gap: 50px;
+}
+
+.platform-pc .strategy-article {
+  padding: 50px;
+}
+
+/* 主机平台优化 */
+.platform-console .strategy-article {
+  padding: 35px;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.platform-console .action-buttons .el-button {
+  padding: 15px 30px;
+  font-size: 18px;
+}
+
+/* 移动平台优化 */
+.platform-mobile .strategy-article {
+  padding: 20px 16px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.platform-mobile .strategy-title {
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+/* 方向响应式样式 */
+.orientation-landscape .strategy-meta {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.orientation-portrait .strategy-meta {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.orientation-landscape .strategy-stats {
+  flex-direction: row;
+  gap: 15px;
+}
+
+.orientation-portrait .strategy-stats {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* 交互模式适配 */
+.interaction-touch .action-buttons .el-button,
+.interaction-touch .action-list .el-button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.interaction-pointer .action-buttons .el-button:hover,
+.interaction-pointer .action-list .el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 图片预览样式 */
   .image-preview-overlay {
     position: fixed;
     top: 0;

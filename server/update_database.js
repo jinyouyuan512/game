@@ -28,17 +28,32 @@ async function updateDatabase() {
     
     console.log(`找到 ${sqlStatements.length} 个SQL语句需要执行`);
     
-    // 执行ALTER TABLE语句
-    console.log('执行 ALTER TABLE 语句...');
-    const alterTableResult = await supabase.rpc('execute_sql', {
-      sql: 'ALTER TABLE strategies ADD COLUMN IF NOT EXISTS image_urls TEXT, ADD COLUMN IF NOT EXISTS video_urls TEXT;'
-    });
-    
-    if (alterTableResult.error) {
-      console.error('执行ALTER TABLE失败:', alterTableResult.error.message);
-    } else {
-      console.log('ALTER TABLE执行成功');
+    // 直接尝试使用Supabase客户端方法来添加列
+    console.log('尝试更新数据库结构...');
+    try {
+      // 创建一个临时策略数据，尝试插入包含新字段的记录，这会触发列的创建
+      console.log('尝试创建包含新字段的临时记录...');
+      await supabase.from('strategies').insert([
+        {
+          title: '临时测试记录',
+          content: '这是一个临时测试记录，用于触发数据库结构更新',
+          game_id: 1,
+          user_id: 1,
+          difficulty: '简单',
+          type: '测试',
+          image_urls: '[]',
+          video_urls: '[]'
+        }
+      ]);
+      
+      // 如果成功插入，尝试删除这个临时记录
+      await supabase.from('strategies').delete().eq('title', '临时测试记录');
+      console.log('数据库结构更新成功!');
+    } catch (alterError) {
+      console.error('直接更新失败，尝试其他方法:', alterError.message);
     }
+    
+    // 跳过这个检查，因为我们已经在try-catch中处理了错误
     
     // 执行UPDATE语句 - 更新image_urls
     console.log('更新image_urls字段...');

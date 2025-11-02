@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片响应式测试</title>
+    <style>
+        body {
+            background-color: #242424;
+            color: white;
+            padding: 20px;
+        }
+        
+        .article-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* 应用我们添加的所有响应式图片样式 */
+        img {
+            max-width: 100% !important;
+            height: auto !important;
+            display: block !important;
+            box-sizing: border-box !important;
+            margin: 0 auto !important;
+        }
+        
+        .strategy-image {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            object-fit: contain !important;
+            display: block !important;
+            margin: 0 auto !important;
+            box-sizing: border-box !important;
+        }
+        
+        .test-image-large {
+            width: 2000px; /* 故意设置超大宽度来测试响应式 */
+            height: 1000px;
+        }
+    </style>
+</head>
+<body>
+    <h1>图片响应式测试页面</h1>
+    
+    <div class="article-container">
+        <h2>测试图片（超大尺寸，应该自动适应容器）</h2>
+        <p>下面的图片宽度设置为2000px，但应该会自动缩小到适应容器宽度：</p>
+        
+        <!-- 使用占位图片服务 -->
+        <img 
+            src="https://via.placeholder.com/1200x800?text=测试响应式图片" 
+            alt="测试响应式图片" 
+            class="strategy-image test-image-large"
+        />
+        
+        <p>图片应该完全在容器内显示，不会溢出。</p>
+    </div>
+</body>
+</html>

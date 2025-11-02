@@ -1,10 +1,20 @@
 <template>
-  <div class="game-detail" v-loading="loading">
-    <div v-if="game" class="game-content">
+  <div class="game-detail" 
+       v-loading="loading"
+       :class="{
+         'platform-pc': currentPlatform === 'pc',
+         'platform-mobile': currentPlatform === 'mobile',
+         'platform-console': currentPlatform === 'console',
+         'orientation-landscape': currentOrientation === 'landscape',
+         'orientation-portrait': currentOrientation === 'portrait',
+         'interaction-touch': interactionMode === 'touch',
+         'interaction-pointer': interactionMode === 'pointer'
+       }">
+    <div v-if="game" class="game-container orientation-responsive">
       <!-- 游戏头部信息 -->
       <div class="game-header">
         <div class="container">
-          <div class="header-content">
+          <div class="header-content orientation-responsive">
             <div class="breadcrumb">
               <el-breadcrumb separator="/">
                 <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
@@ -223,7 +233,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGameStore } from '../stores/game'
 import { EditPen } from '@element-plus/icons-vue'
@@ -236,6 +246,7 @@ import {
   View, 
   Grid 
 } from '@element-plus/icons-vue'
+import deviceDetectionService from '../services/DeviceDetectionService'
 
 const route = useRoute()
 const router = useRouter()
@@ -253,6 +264,27 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const totalStrategies = ref(0)
 const strategiesSection = ref(null)
+
+// 设备信息响应式状态
+const currentPlatform = ref(deviceDetectionService.getCurrentPlatform())
+const currentOrientation = ref(deviceDetectionService.getCurrentOrientation())
+const interactionMode = ref(deviceDetectionService.getInteractionMode())
+
+// 监听设备变化
+watch(() => deviceDetectionService.getCurrentPlatform(), (newPlatform) => {
+  currentPlatform.value = newPlatform
+  console.log('游戏详情页平台变化:', newPlatform)
+})
+
+watch(() => deviceDetectionService.getCurrentOrientation(), (newOrientation) => {
+  currentOrientation.value = newOrientation
+  console.log('游戏详情页方向变化:', newOrientation)
+})
+
+watch(() => deviceDetectionService.getInteractionMode(), (newMode) => {
+  interactionMode.value = newMode
+  console.log('游戏详情页交互模式变化:', newMode)
+})
 
 // 计算属性
 const gameId = computed(() => route.params.id)
@@ -1392,6 +1424,105 @@ onMounted(async () => {
   .related-games-grid {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
+}
+
+/* 平台特定样式优化 */
+/* PC平台优化 */
+.platform-pc .game-header {
+  padding: 80px 0 40px;
+}
+
+.platform-pc .game-info-section {
+  display: flex;
+  gap: 40px;
+}
+
+.platform-pc .game-cover {
+  width: 300px;
+  height: 300px;
+}
+
+/* 主机平台优化 */
+.platform-console .game-header {
+  padding: 40px 0 30px;
+}
+
+.platform-console .game-info-section {
+  display: flex;
+  gap: 30px;
+}
+
+.platform-console .game-cover {
+  width: 280px;
+  height: 280px;
+}
+
+.platform-console .game-actions .el-button {
+  padding: 15px 30px;
+  font-size: 18px;
+}
+
+/* 移动平台优化 */
+.platform-mobile .game-header {
+  padding: 20px 0;
+}
+
+.platform-mobile .header-content {
+  flex-direction: column;
+  gap: 20px;
+}
+
+.platform-mobile .game-info-section {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.platform-mobile .game-cover {
+  width: 220px;
+  height: 220px;
+  margin: 0 auto;
+}
+
+.platform-mobile .game-title {
+  font-size: 28px;
+  text-align: center;
+}
+
+.platform-mobile .game-actions {
+  flex-direction: column;
+  width: 100%;
+  gap: 15px;
+}
+
+/* 方向响应式样式 */
+.orientation-landscape .strategies-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+.orientation-portrait .strategies-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+/* 交互模式适配 */
+.interaction-touch .strategy-card .el-button,
+.interaction-touch .game-actions .el-button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.interaction-pointer .strategy-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.interaction-pointer .game-actions .el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
 /* 打印样式 */

@@ -77,3 +77,22 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* 全局响应式图片规则 */
+* {
+  box-sizing: border-box;
+}
+
+img {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+}
+
+/* 确保文章容器和其中的图片能正确显示 */
+.article-content,
+.strategy-article {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}

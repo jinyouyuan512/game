@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频播放测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .video-container {
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        video {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+        }
+        .test-info {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>视频播放测试页面</h1>
+    
+    <div class="test-info">
+        <h3>测试信息</h3>
+        <p>此页面用于测试中文文件名的视频是否能正常播放。</p>
+    </div>
+
+    <div class="video-container">
+        <h3>测试视频：蒋安琪分享的视频</h3>
+        <video controls>
+            <source src="http://localhost:3000/uploads/videos/蒋安琪分享的视频-11d52e4b-74cf-47ed-b76e-44268a06907c.mp4" type="video/mp4">
+            您的浏览器不支持视频播放。
+        </video>
+        <p>视频URL: http://localhost:3000/uploads/videos/蒋安琪分享的视频-11d52e4b-74cf-47ed-b76e-44268a06907c.mp4</p>
+    </div>
+
+    <div class="video-container">
+        <h3>URL编码测试（修复版）</h3>
+        <video controls>
+            <source src="http://localhost:3000/uploads/videos/蒋安琪分享的视频-11d52e4b-74cf-47ed-b76e-44268a06907c.mp4" type="video/mp4">
+            您的浏览器不支持视频播放。
+        </video>
+        <p>修复后的视频URL: http://localhost:3000/uploads/videos/蒋安琪分享的视频-11d52e4b-74cf-47ed-b76e-44268a06907c.mp4</p>
+        <p><strong>说明：</strong>使用原始中文文件名，避免URL编码问题</p>
+    </div>
+
+    <div class="test-info">
+        <h3>测试结果</h3>
+        <p>如果上述视频能够正常播放，说明中文文件名问题已解决。</p>
+    </div>
+</body>
+</html>

@@ -34,31 +34,66 @@ export const useAdminStore = defineStore('admin', {
       this.error = null
       
       try {
-        // 简化的登录逻辑 - 在实际应用中应该使用更安全的认证方式
-        if (credentials.username === 'admin' && credentials.password === 'admin123') {
-          const adminData = {
-            id: 'admin-001',
-            username: 'admin',
-            email: 'admin@gamesite.com',
-            role: 'super_admin',
-            permissions: ['manage_games', 'manage_strategies', 'manage_users', 'view_analytics']
-          }
-          
-          this.currentAdmin = adminData
-          this.isAuthenticated = true
-          this.permissions = adminData.permissions
-          
-          // 保存到本地存储
-          localStorage.setItem('admin_session', JSON.stringify({
-            admin: adminData,
-            timestamp: Date.now()
-          }))
-          
-          return { success: true, admin: adminData }
-        } else {
-          throw new Error('用户名或密码错误')
+        // 调用后端API进行登录验证
+        const response = await fetch('http://localhost:3000/api/admin/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(credentials)
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || '登录失败，请检查用户名和密码')
         }
+        
+        const data = await response.json()
+        console.log('登录API响应数据:', data)
+        
+        // 格式化管理员数据
+        const adminData = {
+          id: data.admin.id,
+          username: data.admin.username,
+          email: data.admin.email || 'admin@example.com',
+          role: data.admin.role || 'superadmin',
+          permissions: ['manage_games', 'manage_strategies', 'manage_users', 'view_analytics'],
+          sessionToken: data.sessionToken,
+          expiresAt: data.expiresAt
+        }
+        
+        // 确保正确设置状态
+        this.currentAdmin = adminData
+        // 强制设置认证状态为true
+        this.isAuthenticated = true
+        this.permissions = adminData.permissions
+        
+        console.log('管理员状态已更新:', {
+          currentAdmin: this.currentAdmin,
+          isAuthenticated: this.isAuthenticated
+        })
+        
+        // 立即验证状态是否正确设置
+        console.log('状态验证:', {
+          currentAdminExists: !!this.currentAdmin,
+          isAuthenticated: this.isAuthenticated,
+          permissionsCount: this.permissions.length
+        })
+        
+        // 保存到本地存储
+        localStorage.setItem('admin_session', JSON.stringify({
+          admin: adminData,
+          timestamp: Date.now(),
+          sessionToken: data.sessionToken,
+          expiresAt: data.expiresAt
+        }))
+        
+        // 清除可能存在的旧缓存
+        sessionStorage.removeItem('admin_session')
+        
+        return { success: true, admin: adminData }
       } catch (error) {
+        console.error('登录API调用失败:', error)
         this.error = error.message
         return { success: false, error: error.message }
       } finally {

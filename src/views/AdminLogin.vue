@@ -53,7 +53,7 @@
               @click="handleLogin"
               class="login-button"
             >
-              {{ loginLoading ? '登录中...' : '登录' }}
+              {{ loading ? '登录中...' : '登录' }}
             </el-button>
           </el-form-item>
         </el-form>
@@ -108,7 +108,13 @@ const loginForm = reactive({
 const loading = ref(false)
 
 const handleLogin = async () => {
+  console.log('开始登录流程...', {
+    username: loginForm.username,
+    password: loginForm.password
+  })
+  
   if (!loginForm.username || !loginForm.password) {
+    console.warn('用户名或密码为空')
     ElMessage.warning('请输入用户名和密码')
     return
   }
@@ -116,21 +122,56 @@ const handleLogin = async () => {
   loading.value = true
   
   try {
-    const result = await adminStore.login({
-      username: loginForm.username,
-      password: loginForm.password
+    // 直接调用后端API，绕过store可能存在的问题
+    console.log('直接调用登录API...')
+    const response = await fetch('http://localhost:3000/api/admin/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        username: loginForm.username,
+        password: loginForm.password
+      })
     })
     
-    if (result.success) {
-      ElMessage.success('登录成功')
-      router.push('/admin/dashboard')
-    } else {
-      ElMessage.error(result.error || '登录失败')
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || '登录失败')
     }
+    
+    const data = await response.json()
+    console.log('登录API返回数据:', data)
+    
+    // 手动设置管理员会话数据
+    const adminSession = {
+      admin: data.admin,
+      sessionToken: data.sessionToken,
+      isAuthenticated: true
+    }
+    
+    // 保存到本地存储
+    localStorage.setItem('admin_session', JSON.stringify(adminSession))
+    console.log('管理员会话已保存')
+    
+    // 清除可能的冲突数据
+    sessionStorage.clear()
+    localStorage.removeItem('user_session')
+    
+    ElMessage.success('登录成功！正在跳转到管理后台...')
+    console.log('直接跳转到管理后台...')
+    
+    // 使用最简单直接的方式跳转
+    setTimeout(() => {
+      window.location.href = '/admin/dashboard'
+    }, 100)
+    
   } catch (error) {
-    ElMessage.error('登录失败：' + error.message)
+    console.error('登录失败:', error.message || '未知错误')
+    ElMessage.error(error.message || '登录失败')
   } finally {
     loading.value = false
+    console.log('登录流程结束')
   }
 }
 </script>

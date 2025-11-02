@@ -1,12 +1,73 @@
-/* 响应式布局样式 */
+/* 响应式布局样式 - 跨平台适配增强版 */
 
 /* 断点定义 */
 :root {
-  --breakpoint-xs: 480px;
-  --breakpoint-sm: 768px;
-  --breakpoint-md: 1024px;
-  --breakpoint-lg: 1200px;
-  --breakpoint-xl: 1440px;
+  /* 移动端断点 */
+  --breakpoint-xs: 360px;
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  
+  /* 平板/主机端断点 */
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-xxl: 1400px;
+  
+  /* 大屏显示断点 */
+  --breakpoint-2xl: 1600px;
+  --breakpoint-3xl: 1920px;
+  
+  /* 交互模式适配 */
+  --touch-target-size: 44px;
+  --mouse-target-size: 28px;
+  
+  /* 字体大小响应式变量 */
+  --base-font-size: 16px;
+}
+
+/* 交互模式适配 - 触摸设备 */
+@media (pointer: coarse) {
+  :root {
+    --interaction-mode: touch;
+  }
+  
+  /* 触摸设备优化 */
+  .btn, button, a, .nav-item, .menu-item {
+    min-width: var(--touch-target-size);
+    min-height: var(--touch-target-size);
+    padding: 12px;
+  }
+  
+  /* 增大表单元素 */
+  input, select, textarea {
+    min-height: var(--touch-target-size);
+    font-size: 16px;
+  }
+  
+  /* 触摸设备特有的滚动优化 */
+  .scrollable-content {
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: y mandatory;
+  }
+}
+
+/* 交互模式适配 - 鼠标设备 */
+@media (pointer: fine) {
+  :root {
+    --interaction-mode: pointer;
+  }
+  
+  /* 鼠标设备优化 */
+  .btn, button, a, .nav-item, .menu-item {
+    min-width: var(--mouse-target-size);
+    min-height: var(--mouse-target-size);
+    transition: all 0.2s ease;
+  }
+  
+  /* 添加悬停效果 */
+  .hover-effect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
 }
 
 /* 容器样式 */
@@ -15,11 +76,33 @@
   max-width: var(--breakpoint-lg);
   margin: 0 auto;
   padding: 0 20px;
+  transition: max-width 0.3s ease;
 }
 
 .container-fluid {
   width: 100%;
   padding: 0 20px;
+}
+
+/* 安全区域适配（刘海/圆角屏） */
+.safe-area {
+  padding-left: calc(env(safe-area-inset-left, 0px));
+  padding-right: calc(env(safe-area-inset-right, 0px));
+  padding-top: calc(env(safe-area-inset-top, 0px));
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px));
+}
+
+/* 大屏幕容器 */
+@media (min-width: 1440px) {
+  .container {
+    max-width: var(--breakpoint-xl);
+  }
+}
+
+@media (min-width: 1600px) {
+  .container {
+    max-width: var(--breakpoint-2xl);
+  }
 }
 
 /* 网格系统 */
@@ -52,11 +135,144 @@
 .d-block { display: block !important; }
 .d-flex { display: flex !important; }
 .d-grid { display: grid !important; }
+.d-inline { display: inline !important; }
+.d-inline-block { display: inline-block !important; }
+.d-inline-flex { display: inline-flex !important; }
+
+/* 移动端显示/隐藏辅助 */
+.hide-on-mobile { display: none !important; }
+.show-on-mobile { display: block !important; }
+
+@media (min-width: 768px) {
+  .hide-on-mobile { display: initial !important; }
+  .show-on-mobile { display: none !important; }
+}
+
+/* 响应式显示/隐藏类 */
+.d-xs-none { display: none !important; }
+.d-xs-block { display: block !important; }
+.d-xs-flex { display: flex !important; }
+.d-xs-grid { display: grid !important; }
+
+/* 设备方向适配 */
+@media (orientation: landscape) {
+  :root {
+    --device-orientation: landscape;
+  }
+  
+  /* 横屏模式下的布局优化 */
+  .orientation-responsive {
+    flex-direction: row;
+  }
+  
+  .content-columns {
+    column-count: 2;
+  }
+}
+
+@media (orientation: portrait) {
+  :root {
+    --device-orientation: portrait;
+  }
+  
+  /* 竖屏模式下的布局优化 */
+  .orientation-responsive {
+    flex-direction: column;
+  }
+  
+  .content-columns {
+    column-count: 1;
+  }
+}
+
+/* 自动自适应栅格布局（卡片列表） */
+.grid-auto-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+@media (min-width: 480px) {
+  .d-sm-none { display: none !important; }
+  .d-sm-block { display: block !important; }
+  .d-sm-flex { display: flex !important; }
+  .d-sm-grid { display: grid !important; }
+}
+
+@media (min-width: 768px) {
+  .d-md-none { display: none !important; }
+  .d-md-block { display: block !important; }
+  .d-md-flex { display: flex !important; }
+  .d-md-grid { display: grid !important; }
+}
+
+@media (min-width: 1024px) {
+  .d-lg-none { display: none !important; }
+  .d-lg-block { display: block !important; }
+  .d-lg-flex { display: flex !important; }
+  .d-lg-grid { display: grid !important; }
+}
+
+@media (min-width: 1200px) {
+  .d-xl-none { display: none !important; }
+  .d-xl-block { display: block !important; }
+  .d-xl-flex { display: flex !important; }
+  .d-xl-grid { display: grid !important; }
+}
+
+@media (min-width: 1600px) {
+  .d-2xl-none { display: none !important; }
+  .d-2xl-block { display: block !important; }
+  .d-2xl-flex { display: flex !important; }
+  .d-2xl-grid { display: grid !important; }
+}
 
 /* 文本对齐 */
 .text-left { text-align: left !important; }
 .text-center { text-align: center !important; }
 .text-right { text-align: right !important; }
+.text-justify { text-align: justify !important; }
+
+/* 响应式文本对齐 */
+.text-xs-left { text-align: left !important; }
+.text-xs-center { text-align: center !important; }
+.text-xs-right { text-align: right !important; }
+.text-xs-justify { text-align: justify !important; }
+
+@media (min-width: 480px) {
+  .text-sm-left { text-align: left !important; }
+  .text-sm-center { text-align: center !important; }
+  .text-sm-right { text-align: right !important; }
+  .text-sm-justify { text-align: justify !important; }
+}
+
+@media (min-width: 768px) {
+  .text-md-left { text-align: left !important; }
+  .text-md-center { text-align: center !important; }
+  .text-md-right { text-align: right !important; }
+  .text-md-justify { text-align: justify !important; }
+}
+
+@media (min-width: 1024px) {
+  .text-lg-left { text-align: left !important; }
+  .text-lg-center { text-align: center !important; }
+  .text-lg-right { text-align: right !important; }
+  .text-lg-justify { text-align: justify !important; }
+}
+
+@media (min-width: 1200px) {
+  .text-xl-left { text-align: left !important; }
+  .text-xl-center { text-align: center !important; }
+  .text-xl-right { text-align: right !important; }
+  .text-xl-justify { text-align: justify !important; }
+}
+
+@media (min-width: 1600px) {
+  .text-2xl-left { text-align: left !important; }
+  .text-2xl-center { text-align: center !important; }
+  .text-2xl-right { text-align: right !important; }
+  .text-2xl-justify { text-align: justify !important; }
+}
 
 /* 间距工具类 */
 .m-0 { margin: 0 !important; }
