@@ -3,7 +3,7 @@
     <div class="post-detail">
       <div class="post-header">
         <div class="user-info">
-          <img :src="currentPost.author.avatar || '/default-avatar.png'" alt="用户头像" class="user-avatar">
+          <img :src="currentPost.author.avatar || '/default-avatar.svg'" alt="用户头像" class="user-avatar">
           <div class="user-meta">
             <div class="username">{{ currentPost.author.username }}</div>
             <div class="post-time">{{ formatDate(currentPost.created_at) }}</div>
@@ -38,7 +38,7 @@
       
       <!-- 评论输入框 -->
       <div class="comment-input-section">
-        <img src="/user-avatar.png" alt="你的头像" class="comment-avatar">
+        <img src="/default-avatar.svg" alt="你的头像" class="comment-avatar">
         <div class="comment-input-wrapper">
           <el-input
             v-model="newComment"
@@ -58,7 +58,7 @@
       <!-- 评论列表 -->
       <div class="comments-list">
         <div class="comment-item" v-for="comment in comments" :key="comment.id">
-          <img :src="comment.author.avatar || '/default-avatar.png'" alt="评论者头像" class="comment-avatar">
+          <img :src="comment.author.avatar || '/default-avatar.svg'" alt="评论者头像" class="comment-avatar">
           <div class="comment-content">
             <div class="comment-header">
               <div class="comment-username">{{ comment.author.username }}</div>
