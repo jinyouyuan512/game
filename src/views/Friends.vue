@@ -285,7 +285,7 @@
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, User, Plus, Star, Settings, More, Message, Phone, InfoFilled, VideoCamera, ArrowDown } from '@element-plus/icons-vue'
+import { Search, User, Plus, Star, Setting, More, Message, Phone, InfoFilled, VideoCamera, ArrowDown } from '@element-plus/icons-vue'
 import { useUserStore } from '../stores/user'
 
 const router = useRouter()

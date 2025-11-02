@@ -67,8 +67,8 @@
             <div class="comment-text">{{ comment.content }}</div>
             <div class="comment-actions">
               <el-button type="text" size="small" @click="toggleCommentLike(comment.id)">
-                <el-icon v-if="!comment.is_liked"><ThumbUp /></el-icon>
-                <el-icon v-else><ThumbUpFilled /></el-icon>
+                <el-icon v-if="!comment.is_liked"><Like /></el-icon>
+                <el-icon v-else><LikeFilled /></el-icon>
                 {{ comment.like_count }}
               </el-button>
               <el-button type="text" size="small" @click="replyComment(comment.id)">回复</el-button>
@@ -110,7 +110,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ThumbUp, ThumbUpFilled, ChatDotRound, Share } from '@element-plus/icons-vue'
+import { Like, LikeFilled, ChatDotRound, Share } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -213,7 +213,7 @@ const mockComments = [
 ]
 
 // 计算属性
-const likeIcon = computed(() => isLiked.value ? ThumbUpFilled : ThumbUp)
+const likeIcon = computed(() => isLiked.value ? LikeFilled : Like)
 
 // 方法
 const loadPostData = () => {

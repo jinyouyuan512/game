@@ -4,7 +4,7 @@
       <h2>系统设置</h2>
       <div class="header-actions">
         <el-button type="primary" @click="saveSettings" :loading="saving">
-          <el-icon><Save /></el-icon>
+          <el-icon><Download /></el-icon>
           保存设置
         </el-button>
       </div>
@@ -189,7 +189,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Save, Search } from '@element-plus/icons-vue'
+import { Download, Search } from '@element-plus/icons-vue'
 import { Delete as DeleteIcon } from '@element-plus/icons-vue'
 
 // 状态管理
