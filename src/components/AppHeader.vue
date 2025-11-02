@@ -636,29 +636,34 @@ const showNotifications = () => {
   showNotificationDrawer.value = true
 }
 
-const handleUserCommand = (command) => {
-  switch (command) {
-    case 'login':
-      router.push('/login')
-      break
-    case 'register':
-      router.push('/register')
-      break
-    case 'profile':
-      router.push('/profile')
-      break
-    case 'favorites':
-      router.push('/favorites')
-      break
-    case 'history':
-      router.push('/history')
-      break
-    case 'settings':
-      router.push('/settings')
-      break
-    case 'logout':
-      handleLogout()
-      break
+const handleUserCommand = async (command) => {
+  try {
+    switch (command) {
+      case 'login':
+        await router.push('/login')
+        break
+      case 'register':
+        await router.push('/register')
+        break
+      case 'profile':
+        await router.push('/profile')
+        break
+      case 'favorites':
+        await router.push('/favorites')
+        break
+      case 'history':
+        await router.push('/history')
+        break
+      case 'settings':
+        await router.push('/settings')
+        break
+      case 'logout':
+        await handleLogout()
+        break
+    }
+  } finally {
+    // 移动端场景：关闭抽屉，避免遮挡导致“看起来未跳转”
+    showMobileMenu.value = false
   }
 }
 
