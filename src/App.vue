@@ -19,15 +19,13 @@
 
     <!-- 主内容区域 -->
     <el-main class="app-main orientation-responsive">
-      <div class="container safe-area">
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <keep-alive :include="keepAliveComponents">
-              <component :is="Component" />
-            </keep-alive>
-          </transition>
-        </router-view>
-      </div>
+      <router-view v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <keep-alive :include="keepAliveComponents">
+            <component :is="Component" />
+          </keep-alive>
+        </transition>
+      </router-view>
     </el-main>
 
     <!-- 全局页脚 -->

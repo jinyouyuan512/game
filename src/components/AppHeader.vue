@@ -46,10 +46,6 @@
               <span>好友系统</span>
             </el-menu-item>
           </el-sub-menu>
-          <el-menu-item index="/ai-chat">
-            <el-icon><ChatDotRound /></el-icon>
-            <span>AI助手</span>
-          </el-menu-item>
         </el-menu>
       </nav>
 
@@ -93,39 +89,33 @@
           />
         </el-tooltip>
       </el-badge>
-
-      <!-- 安装应用（PWA） -->
-      <el-tooltip content="安装应用" placement="bottom">
+      
+      <!-- 移动端搜索按钮 -->
+      <el-tooltip content="搜索" placement="bottom">
         <el-button 
-          v-if="canInstall"
-          type="primary"
-          size="small"
-          class="action-button"
-          @click="installApp"
-        >
-          <el-icon><Download /></el-icon>
-          <span style="margin-left:6px;">安装应用</span>
-        </el-button>
+          circle 
+          :icon="Search" 
+          @click="openMobileSearch"
+          class="mobile-search-btn action-button"
+        />
       </el-tooltip>
       
-      <!-- 测试通知按钮 - 用于调试 -->
-      <button style="position: fixed; top: 100px; right: 20px; z-index: 1000; padding: 10px; background-color: #409EFF; color: white; border: none; border-radius: 4px; cursor: pointer;" @click="showNotificationDrawer = true">
-        测试通知
-      </button>
 
-        <!-- 用户菜单 -->
-        <el-dropdown @command="handleUserCommand" trigger="click" class="user-dropdown">
-          <div class="user-avatar">
+
+        <!-- 用户菜单 - 优化导航栏整合 -->
+        <el-dropdown @command="handleUserCommand" trigger="click" class="user-dropdown integrated-user-menu">
+          <div class="user-avatar" @click.stop>
             <el-avatar 
               :size="36" 
               :src="userInfo?.avatar" 
               :icon="UserFilled"
+              class="user-avatar-image"
             />
             <span v-if="userInfo" class="username">{{ userInfo.username }}</span>
             <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
           </div>
           <template #dropdown>
-            <el-dropdown-menu class="user-dropdown-menu">
+            <el-dropdown-menu class="user-dropdown-menu modern-dropdown-menu">
               <el-dropdown-item v-if="!isLoggedIn" command="login">
                 <el-icon><User /></el-icon>
                 <span>登录</span>
@@ -177,80 +167,184 @@
       <div class="decoration-circle decoration-3"></div>
     </div>
 
-    <!-- 移动端抽屉菜单 -->
+    <!-- 移动端抽屉菜单 - 改进版支持全屏/半屏和分类 -->
     <el-drawer
       v-model="showMobileMenu"
-      title="导航菜单"
-      direction="rtl"
-      size="280px"
+      direction="ltr"
+      :size="menuDrawerSize"
       :with-header="false"
-      custom-class="mobile-drawer"
+      :custom-class="['mobile-drawer', { 'full-screen': isFullScreenMenu }]"
+      @close="handleMenuClose"
+      @open="handleMenuOpen"
+      append-to-body
     >
       <div class="mobile-menu" style="display: flex; flex-direction: column; height: 100%;">
-        <div class="mobile-brand">
+        <!-- 移动端品牌区域 -->
+        <div class="mobile-brand enhanced-brand">
           <div class="logo">
             <el-icon size="24"><Trophy /></el-icon>
           </div>
           <div class="brand-text">
             <h2>游戏攻略站</h2>
           </div>
+          <!-- 菜单尺寸切换按钮 -->
+          <el-button 
+            class="menu-size-toggle"
+            size="small"
+            circle
+            @click.stop="toggleMenuSize"
+            title="切换菜单大小"
+          >
+            <el-icon><SwitchButton /></el-icon>
+          </el-button>
         </div>
 
-        <el-menu
-          :default-active="activeMenu"
-          @select="handleMobileMenuSelect"
-          class="mobile-el-menu"
-          style="display: block;"
-        >
-          <el-menu-item index="/">
-            <el-icon><House /></el-icon>
-            <span>首页</span>
-          </el-menu-item>
-          <el-menu-item index="/games">
-            <el-icon><Grid /></el-icon>
-            <span>游戏中心</span>
-          </el-menu-item>
-          <el-sub-menu index="/community">
-            <template #title>
-              <el-icon><ChatDotRound /></el-icon>
-              <span>社区与社交</span>
-            </template>
-            <el-menu-item index="/community">
-              <el-icon><ChatRound /></el-icon>
-              <span>游戏社区</span>
-            </el-menu-item>
-            <el-menu-item index="/friends">
-              <el-icon><User /></el-icon>
-              <span>好友系统</span>
-            </el-menu-item>
-          </el-sub-menu>
-          <el-menu-item index="/ai-chat">
-            <el-icon><ChatDotRound /></el-icon>
-            <span>AI助手</span>
-          </el-menu-item>
-        </el-menu>
-
-        <div class="mobile-user-section">
-          <div v-if="isLoggedIn" class="mobile-user-info">
-            <el-avatar :size="48" :src="userInfo?.avatar" :icon="UserFilled" />
-            <div class="user-details">
-              <p class="username">{{ userInfo.username }}</p>
-              <p class="user-email">{{ userInfo.email }}</p>
-            </div>
+        <!-- 分类展示的移动端导航菜单 -->
+        <div class="mobile-menu-sections">
+          <!-- 主要功能分类 -->
+          <div class="mobile-menu-section">
+            <h3 class="menu-section-title">主要功能</h3>
+            <el-menu
+              :default-active="activeMenu"
+              @select="handleMobileMenuSelect"
+              class="mobile-el-menu category-menu"
+              background-color="transparent"
+              text-color="white"
+              active-text-color="#00d4ff"
+            >
+              <el-menu-item index="/" @click="handleMobileMenuSelect('/')">
+                <el-icon><House /></el-icon>
+                <span>首页</span>
+              </el-menu-item>
+              <el-menu-item index="/games" @click="handleMobileMenuSelect('/games')">
+                <el-icon><Grid /></el-icon>
+                <span>游戏大全</span>
+              </el-menu-item>
+              <el-menu-item index="/search" @click="handleMobileMenuSelect('/search')">
+                <el-icon><Document /></el-icon>
+                <span>搜索</span>
+              </el-menu-item>
+              <el-menu-item index="/ai-test" @click="handleMobileMenuSelect('/ai-test')">
+                <el-icon><ChatDotRound /></el-icon>
+                <span>AI助手</span>
+              </el-menu-item>
+            </el-menu>
           </div>
           
-          <div class="mobile-actions">
-            <el-button v-if="!isLoggedIn" type="primary" @click="handleUserCommand('login')">
-              登录
-            </el-button>
-            <el-button v-if="!isLoggedIn" @click="handleUserCommand('register')">
-              注册
-            </el-button>
-            <template v-if="isLoggedIn">
-              <el-button @click="handleUserCommand('profile')">个人中心</el-button>
-              <el-button @click="handleUserCommand('settings')">设置</el-button>
-              <el-button type="danger" @click="handleUserCommand('logout')">退出</el-button>
-            </template>
+          <!-- 社区功能分类 -->
+          <div class="mobile-menu-section">
+            <h3 class="menu-section-title">社区与社交</h3>
+            <el-menu
+              @select="handleMobileMenuSelect"
+              class="mobile-el-menu category-menu"
+              background-color="transparent"
+              text-color="white"
+              active-text-color="#00d4ff"
+            >
+              <el-menu-item index="/community" @click="handleMobileMenuSelect('/community')">
+                <el-icon><ChatRound /></el-icon>
+                <span>社区</span>
+              </el-menu-item>
+              <el-menu-item index="/friends" @click="handleMobileMenuSelect('/friends')">
+                <el-icon><User /></el-icon>
+                <span>好友系统</span>
+              </el-menu-item>
+              <el-menu-item index="/friends/requests" @click="handleMobileMenuSelect('/friends/requests')">
+                <el-icon><Bell /></el-icon>
+                <span>好友请求</span>
+              </el-menu-item>
+              <el-menu-item index="/community/create" @click="handleMobileMenuSelect('/community/create')">
+                <el-icon><Document /></el-icon>
+                <span>发布帖子</span>
+              </el-menu-item>
+            </el-menu>
+          </div>
+          
+          <!-- 开发与管理（登录后显示） -->
+          <div class="mobile-menu-section" v-if="isLoggedIn">
+            <h3 class="menu-section-title">开发与管理</h3>
+            <el-menu
+              @select="handleMobileMenuSelect"
+              class="mobile-el-menu category-menu"
+              background-color="transparent"
+              text-color="white"
+              active-text-color="#00d4ff"
+            >
+              <el-menu-item index="/add-game" @click="handleMobileMenuSelect('/add-game')">
+                <el-icon><Grid /></el-icon>
+                <span>添加游戏</span>
+              </el-menu-item>
+            </el-menu>
+          </div>
+          
+          <!-- 用户区域分类 -->
+          <div class="menu-section user-section">
+            <h3 class="section-title">用户中心</h3>
+            <div v-if="isLoggedIn" class="mobile-user-info">
+              <el-avatar :size="48" :src="userInfo?.avatar" :icon="UserFilled" class="user-avatar-large" />
+              <div class="user-details">
+                <p class="username">{{ userInfo.username }}</p>
+                <p class="user-email">{{ userInfo.email }}</p>
+              </div>
+            </div>
+            
+            <div class="mobile-actions">
+              <el-button 
+                v-if="!isLoggedIn" 
+                type="primary" 
+                @click="handleUserCommand('login')"
+                class="action-button-mobile full-width-btn"
+              >
+                <el-icon><User /></el-icon>
+                <span>登录</span>
+              </el-button>
+              <el-button 
+                v-if="!isLoggedIn" 
+                @click="handleUserCommand('register')"
+                class="action-button-mobile full-width-btn"
+              >
+                <el-icon><UserFilled /></el-icon>
+                <span>注册</span>
+              </el-button>
+              <template v-if="isLoggedIn">
+                <el-button 
+                  @click="handleUserCommand('profile')"
+                  class="action-button-mobile full-width-btn"
+                >
+                  <el-icon><User /></el-icon>
+                  <span>个人中心</span>
+                </el-button>
+                <el-button 
+                  @click="handleUserCommand('favorites')"
+                  class="action-button-mobile full-width-btn"
+                >
+                  <el-icon><Star /></el-icon>
+                  <span>我的收藏</span>
+                </el-button>
+                <el-button 
+                  @click="handleUserCommand('history')"
+                  class="action-button-mobile full-width-btn"
+                >
+                  <el-icon><Clock /></el-icon>
+                  <span>浏览历史</span>
+                </el-button>
+                <el-button 
+                  @click="handleUserCommand('settings')"
+                  class="action-button-mobile full-width-btn"
+                >
+                  <el-icon><Setting /></el-icon>
+                  <span>设置</span>
+                </el-button>
+                <el-button 
+                  type="danger" 
+                  @click="handleUserCommand('logout')"
+                  class="action-button-mobile full-width-btn logout-btn"
+                >
+                  <el-icon><SwitchButton /></el-icon>
+                  <span>退出登录</span>
+                </el-button>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -380,30 +474,29 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import {
-   Trophy,
-   House,
-   Grid,
-   Document,
-   ChatDotRound,
-   Bell,
-   User,
-   UserFilled,
-   Star,
-   Clock,
-   Setting,
-   SwitchButton,
-   ArrowDown,
-   Menu,
-   Sunny,
-   Moon,
-   InfoFilled,
-   WarningFilled,
-   SuccessFilled,
-   ChatRound,
-   Close,
-   Download,
-   Search
- } from '@element-plus/icons-vue'
+  Trophy,
+  House,
+  Grid,
+  Document,
+  ChatDotRound,
+  Bell,
+  User,
+  UserFilled,
+  Star,
+  Clock,
+  Setting,
+  SwitchButton,
+  ArrowDown,
+  Menu,
+  Sunny,
+  Moon,
+  InfoFilled,
+  WarningFilled,
+  SuccessFilled,
+  ChatRound,
+  Close
+} from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -454,39 +547,10 @@ const notifications = ref([
   }
 ])
 
-// PWA 安装提示
-const canInstall = ref(false)
-let deferredPrompt = null
-
-onMounted(() => {
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault()
-    deferredPrompt = e
-    canInstall.value = true
-  })
-
-  window.addEventListener('appinstalled', () => {
-    canInstall.value = false
-    deferredPrompt = null
-    ElMessage.success('应用已安装')
-  })
-})
-
-const installApp = async () => {
-  if (!deferredPrompt) {
-    ElMessage.info('当前不可安装或已安装')
-    return
-  }
-  deferredPrompt.prompt()
-  const { outcome } = await deferredPrompt.userChoice
-  if (outcome === 'accepted') {
-    ElMessage.success('感谢安装！')
-  } else {
-    ElMessage.info('已取消安装')
-  }
-  deferredPrompt = null
-  canInstall.value = false
-}
+// 移动端菜单相关状态
+const isFullScreenMenu = ref(false)
+const menuDrawerSize = ref('280px')
+const menuAnimationInProgress = ref(false)
 
 // 计算属性
 const activeMenu = computed(() => route.path)
@@ -517,6 +581,9 @@ const checkMobile = () => {
     // 普通情况下根据宽度判断
     isMobile.value = isMobileWidth
   }
+  
+  // 根据设备方向和尺寸调整默认菜单大小
+  updateMenuSizeBasedOnDevice()
 }
 
 const handleResize = () => {
@@ -550,8 +617,9 @@ const handleMobileMenuSelect = (index) => {
   showMobileMenu.value = false
 }
 
-const toggleMobileMenu = () => {
-  showMobileMenu.value = !showMobileMenu.value
+// 移动端搜索触发：导航至搜索页作为替代入口
+const openMobileSearch = () => {
+  router.push('/search')
 }
 
 const toggleTheme = () => {
@@ -628,6 +696,99 @@ const markAsRead = (notificationId) => {
   }
 }
 
+// 移动端菜单相关方法
+const toggleMobileMenu = () => {
+  showMobileMenu.value = !showMobileMenu.value
+}
+
+const handleMenuOpen = () => {
+  // 菜单打开时添加动画类
+  setTimeout(() => {
+    const drawer = document.querySelector('.mobile-drawer')
+    const menu = document.querySelector('.mobile-menu')
+    if (drawer) {
+      drawer.classList.add('menu-open')
+      // 添加可见性类以激活加速动画
+      if (menu) {
+        setTimeout(() => {
+          menu.classList.add('menu-visible')
+        }, 50)
+      }
+    }
+  }, 10)
+}
+
+const handleMenuClose = () => {
+  // 移除菜单可见性类
+  const menu = document.querySelector('.mobile-menu')
+  if (menu) {
+    menu.classList.remove('menu-visible')
+  }
+  
+  // 菜单关闭前添加动画类
+  const drawer = document.querySelector('.mobile-drawer')
+  if (drawer) {
+    drawer.classList.remove('menu-open')
+  }
+  
+  // 重置状态
+  if (!menuAnimationInProgress.value) {
+    setTimeout(() => {
+      updateMenuSizeBasedOnDevice()
+    }, 300)
+  }
+}
+
+const toggleMenuSize = () => {
+  if (menuAnimationInProgress.value) return
+  
+  menuAnimationInProgress.value = true
+  isFullScreenMenu.value = !isFullScreenMenu.value
+  
+  // 更新菜单大小
+  if (isFullScreenMenu.value) {
+    menuDrawerSize.value = '100%'
+  } else {
+    // 根据设备方向选择合适的半屏尺寸
+    const isPortrait = window.innerHeight > window.innerWidth
+    menuDrawerSize.value = isPortrait ? '80%' : '50%'
+  }
+  
+  // 添加动画效果
+  const drawer = document.querySelector('.mobile-drawer')
+  if (drawer) {
+    drawer.classList.add('resizing')
+    setTimeout(() => {
+      drawer.classList.remove('resizing')
+      menuAnimationInProgress.value = false
+    }, 300)
+  } else {
+    // 抽屉元素不存在时，延迟重置状态
+    setTimeout(() => {
+      menuAnimationInProgress.value = false
+    }, 300)
+  }
+}
+
+const updateMenuSizeBasedOnDevice = () => {
+  const isPortrait = window.innerHeight > window.innerWidth
+  const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024
+  
+  // 根据设备类型和方向设置默认菜单尺寸
+  if (isTablet) {
+    menuDrawerSize.value = isPortrait ? '70%' : '50%'
+    isFullScreenMenu.value = false
+  } else if (window.innerWidth < 768) {
+    // 小屏手机默认使用全屏
+    menuDrawerSize.value = '100%'
+    isFullScreenMenu.value = true
+  } else {
+    // 桌面设备默认半屏
+    menuDrawerSize.value = '30%'
+    isFullScreenMenu.value = false
+  }
+}
+
 const getNotificationIcon = (type) => {
   const icons = {
     info: InfoFilled,
@@ -670,6 +831,39 @@ const loadTheme = () => {
   document.documentElement.setAttribute('data-theme', savedTheme)
 }
 
+// 触摸优化函数 - 针对移动设备的优化
+let lastTapTime = 0
+const DOUBLE_TAP_THRESHOLD = 300 // 双击时间阈值(ms)
+
+const handleTouchStart = (e) => {
+  // 检测双击事件，用于快速切换菜单尺寸
+  const currentTime = new Date().getTime()
+  const tapLength = currentTime - lastTapTime
+  
+  if (tapLength < DOUBLE_TAP_THRESHOLD && tapLength > 0) {
+    // 双击菜单区域时切换菜单尺寸
+    if (e.target.closest('.mobile-drawer') && showMobileMenu.value) {
+      toggleMenuSize()
+    }
+  }
+  
+  lastTapTime = currentTime
+  
+  // 触摸时的反馈增强
+  if (e.target.closest('.menu-size-toggle')) {
+    const button = e.target.closest('.menu-size-toggle')
+    button.style.transform = 'scale(0.95)'
+    setTimeout(() => {
+      button.style.transform = ''
+    }, 150)
+  }
+  
+  // 优化长列表滚动性能 - 预加载可见区域外的内容
+  if (isMobile.value && showMobileMenu.value) {
+    // 这里可以添加预加载逻辑
+  }
+}
+
 // 生命周期
 onMounted(() => {
   checkMobile()
@@ -683,6 +877,9 @@ onMounted(() => {
   // 一些设备可能不支持orientationchange事件，使用resize作为后备
   // 初始检查滚动位置
   handleScroll()
+  
+  // 添加触摸事件监听以优化移动设备体验
+  document.addEventListener('touchstart', handleTouchStart)
 })
 
 onUnmounted(() => {
@@ -690,6 +887,8 @@ onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
   // 移除设备方向变化监听
   window.removeEventListener('orientationchange', handleOrientationChange)
+  // 移除触摸事件监听
+  document.removeEventListener('touchstart', handleTouchStart)
 })
 </script>
 
@@ -704,7 +903,7 @@ onUnmounted(() => {
   backdrop-filter: blur(15px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .app-header.scrolled {
@@ -905,6 +1104,8 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 3;
 }
 
 .action-button {
@@ -1051,8 +1252,23 @@ onUnmounted(() => {
   display: none;
 }
 
+.mobile-search-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  transition: all 0.3s ease;
+  display: none;
+}
+
 @media (max-width: 768px) {
   .mobile-menu-btn {
+    display: flex !important;
+  }
+  .mobile-search-btn {
     display: flex !important;
   }
 }
@@ -1129,6 +1345,7 @@ onUnmounted(() => {
   bottom: 0;
   z-index: 1;
   overflow: hidden;
+  pointer-events: none;
 }
 
 .decoration-circle {
@@ -1195,6 +1412,35 @@ onUnmounted(() => {
   max-height: none !important;
   display: flex !important;
   flex-direction: column !important;
+  /* 添加平滑过渡动画 */
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(-100%);
+}
+
+/* 菜单打开状态 */
+.mobile-drawer.menu-open {
+  transform: translateX(0);
+}
+
+/* 菜单大小调整动画 */
+.mobile-drawer.resizing {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 确保Element Plus的动画与我们的自定义动画兼容 */
+:global(.el-drawer__wrapper .el-drawer-fade-enter-from),
+:global(.el-drawer__wrapper .el-drawer-fade-leave-to) {
+  opacity: 1 !important;
+}
+
+:global(.el-drawer__wrapper .el-drawer-ltr-enter-from),
+:global(.el-drawer__wrapper .el-drawer-ltr-leave-to) {
+  transform: translateX(-100%) !important;
+}
+
+:global(.el-drawer__wrapper .el-drawer-ltr-enter-active),
+:global(.el-drawer__wrapper .el-drawer-ltr-leave-active) {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .mobile-menu {
@@ -1261,6 +1507,165 @@ onUnmounted(() => {
   margin-bottom: 30px;
   padding-bottom: 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+}
+
+/* 菜单尺寸切换按钮 */
+.menu-size-toggle {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  transition: all 0.3s ease !important;
+}
+
+.menu-size-toggle:hover {
+  background: rgba(0, 212, 255, 0.2) !important;
+  border-color: rgba(0, 212, 255, 0.5) !important;
+  transform: scale(1.1) !important;
+}
+
+/* 菜单分类标题样式 */
+.menu-section-title {
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 16px 0;
+  padding: 0 20px;
+  position: relative;
+  opacity: 0;
+  transform: translateX(-20px);
+  animation: slideIn 0.5s ease forwards;
+}
+
+/* 为不同分类添加延迟动画 */
+.menu-section-title:nth-child(1) { animation-delay: 0.1s; }
+.menu-section-title:nth-child(3) { animation-delay: 0.2s; }
+.menu-section-title:nth-child(5) { animation-delay: 0.3s; }
+.menu-section-title:nth-child(7) { animation-delay: 0.4s; }
+
+@keyframes slideIn {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.menu-section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 18px;
+  background: #00d4ff;
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+.mobile-menu-section {
+  margin-bottom: 24px;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+/* 为不同菜单项添加延迟动画 */
+.mobile-menu-section:nth-child(1) { animation-delay: 0.2s; }
+.mobile-menu-section:nth-child(2) { animation-delay: 0.3s; }
+.mobile-menu-section:nth-child(3) { animation-delay: 0.4s; }
+.mobile-menu-section:nth-child(4) { animation-delay: 0.5s; }
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 适配不同设备尺寸的菜单 */
+@media (width <= 375px) {
+  /* 小屏手机优化 */
+  .mobile-menu {
+    padding: 16px;
+  }
+  
+  .mobile-menu-section {
+    margin-bottom: 20px;
+  }
+  
+  .menu-section-title {
+    font-size: 12px;
+    padding: 0 16px;
+  }
+  
+  .mobile-el-menu .el-menu-item, 
+  .mobile-el-menu .el-sub-menu__title {
+    height: 44px !important;
+    line-height: 44px !important;
+    font-size: 14px;
+  }
+}
+
+@media (width >= 376px) and (width < 768px) {
+  /* 中等手机优化 */
+  .mobile-menu {
+    padding: 20px;
+  }
+  
+  .mobile-el-menu .el-menu-item, 
+  .mobile-el-menu .el-sub-menu__title {
+    height: 52px !important;
+    line-height: 52px !important;
+  }
+}
+
+@media (width >= 768px) and (width < 1024px) {
+  /* 平板设备优化 */
+  .mobile-menu {
+    padding: 24px;
+  }
+  
+  .mobile-drawer {
+    width: 70% !important;
+  }
+  
+  /* 平板横屏优化 */
+  @media (orientation: landscape) {
+    .mobile-drawer {
+      width: 50% !important;
+    }
+  }
+}
+
+/* 动画加速处理 */
+.mobile-menu.menu-visible .mobile-menu-section {
+  animation-duration: 0.3s;
+}
+
+.mobile-menu.menu-visible .menu-section-title {
+  animation-duration: 0.3s;
+}
+
+/* 深色主题适配 */
+:global(.dark) .mobile-drawer {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
+}
+
+:global(.dark) .menu-size-toggle {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+:global(.dark) .menu-size-toggle:hover {
+  background: rgba(0, 212, 255, 0.1) !important;
+  border-color: rgba(0, 212, 255, 0.3) !important;
 }
 
 .mobile-brand .logo {
@@ -1709,8 +2114,7 @@ onUnmounted(() => {
   }
   
   .header-search {
-    max-width: 150px;
-    min-width: 120px;
+    display: none;
   }
   
   .brand-title {
