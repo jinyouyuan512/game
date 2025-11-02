@@ -105,15 +105,15 @@
           
           <div class="cache-actions">
             <el-button type="danger" @click="clearAllCache" :loading="clearingCache">
-              <el-icon><Delete /></el-icon>
+              <el-icon><DeleteIcon /></el-icon>
               清理全部缓存
             </el-button>
             <el-button @click="clearSpecificCache('game')" :loading="clearingCache">
-              <el-icon><Delete /></el-icon>
+              <el-icon><DeleteIcon /></el-icon>
               清理游戏缓存
             </el-button>
             <el-button @click="clearSpecificCache('strategy')" :loading="clearingCache">
-              <el-icon><Delete /></el-icon>
+              <el-icon><DeleteIcon /></el-icon>
               清理攻略缓存
             </el-button>
           </div>
@@ -143,7 +143,7 @@
               查询
             </el-button>
             <el-button type="danger" @click="clearLogs">
-              <el-icon><Delete /></el-icon>
+              <el-icon><DeleteIcon /></el-icon>
               清空日志
             </el-button>
           </div>
@@ -189,7 +189,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Save, Delete, Search } from '@element-plus/icons-vue'
+import { Save, Search } from '@element-plus/icons-vue'
+import { Delete as DeleteIcon } from '@element-plus/icons-vue'
 
 // 状态管理
 const activeTab = ref('basic')
