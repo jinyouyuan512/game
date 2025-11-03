@@ -177,7 +177,39 @@ export const useGameStore = defineStore('game', {
      * 获取特定游戏的攻略列表
      */
     async fetchGameStrategies(gameId) {
-      return this.fetchStrategies({ ...this.strategiesFilters, gameId, page: 1 })
+      this.strategiesLoading = true
+      this.strategiesError = null
+      
+      try {
+        // 直接调用专门的游戏攻略API接口
+        const response = await apiClient.get(`/api/strategies/game/${gameId}`)
+        
+        // 处理后端返回的格式 { success: true, data: [...], message: '...', gameId: ... }
+        const responseData = response.data || response
+        let strategies = []
+        
+        if (responseData.success && Array.isArray(responseData.data)) {
+          strategies = responseData.data
+        } else if (Array.isArray(responseData)) {
+          strategies = responseData
+        } else if (responseData.strategies && Array.isArray(responseData.strategies)) {
+          strategies = responseData.strategies
+        }
+        
+        // 更新store状态
+        this.strategies = strategies
+        this.strategiesTotal = strategies.length
+        
+        console.log(`成功获取游戏${gameId}的攻略，共${strategies.length}条`)
+        return strategies
+      } catch (error) {
+        this.strategiesError = error.message || `获取游戏${gameId}的攻略失败`
+        console.error(`Failed to fetch strategies for game ${gameId}:`, error)
+        // 不显示错误消息，避免干扰用户体验
+        return []
+      } finally {
+        this.strategiesLoading = false
+      }
     },
 
     /**

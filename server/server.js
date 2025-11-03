@@ -59,8 +59,11 @@ app.use('/uploads', (req, res, next) => {
     const decodedPath = decodeURIComponent(req.path);
     console.log(`解码后的路径: ${decodedPath}`);
     
-    // 构建文件路径
-    const filePath = path.join(uploadDir, decodedPath.replace(/^\/uploads/, ''));
+    // 构建安全的相对文件路径，避免因以斜杠开头导致忽略 uploadDir
+    const relativePath = decodedPath
+      .replace(/^\/uploads\/?/, '')
+      .replace(/^\/+/, '');
+    const filePath = path.join(uploadDir, relativePath);
     console.log(`构建的文件路径: ${filePath}`);
     
     // 检查文件是否存在

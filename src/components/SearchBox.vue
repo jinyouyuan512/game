@@ -20,73 +20,76 @@
     </el-input>
 
     <!-- 搜索建议下拉框 -->
-    <div v-if="showSuggestions && (gameSuggestions.length > 0 || strategySuggestions.length > 0)" class="search-suggestions">
-      <div v-if="gameSuggestions.length > 0" class="suggestion-section">
-        <div class="suggestion-title">游戏</div>
-        <div
-          v-for="game in gameSuggestions"
-          :key="game.id"
-          class="suggestion-item"
-          @click="selectGame(game)"
-        >
-          <div class="suggestion-content">
-            <div class="suggestion-name">{{ game.name }}</div>
-            <div class="suggestion-meta">{{ game.category }} · {{ game.developer }}</div>
+    <div v-if="showSuggestions && (gameSuggestions.length > 0 || strategySuggestions.length > 0 || searchHistory.length > 0 || hotTags.length > 0)" class="search-suggestions">
+      <!-- 搜索建议 -->
+      <div v-if="searchQuery && (gameSuggestions.length > 0 || strategySuggestions.length > 0)" class="suggestions-content">
+        <div v-if="gameSuggestions.length > 0" class="suggestion-section">
+          <div class="suggestion-title">游戏</div>
+          <div
+            v-for="game in gameSuggestions"
+            :key="game.id"
+            class="suggestion-item"
+            @click="selectGame(game)"
+          >
+            <div class="suggestion-content">
+              <div class="suggestion-name">{{ game.name }}</div>
+              <div class="suggestion-meta">{{ game.category }} · {{ game.developer }}</div>
+            </div>
+          </div>
+        </div>
+        <div v-if="strategySuggestions.length > 0" class="suggestion-section">
+          <div class="suggestion-title">攻略</div>
+          <div
+            v-for="strategy in strategySuggestions"
+            :key="strategy.id"
+            class="suggestion-item"
+            @click="selectStrategy(strategy)"
+          >
+            <div class="suggestion-content">
+              <div class="suggestion-name">{{ strategy.title }}</div>
+              <div class="suggestion-meta">{{ strategy.game_name }} · {{ strategy.author }}</div>
+            </div>
           </div>
         </div>
       </div>
-      <div v-if="strategySuggestions.length > 0" class="suggestion-section">
-        <div class="suggestion-title">攻略</div>
-        <div
-          v-for="strategy in strategySuggestions"
-          :key="strategy.id"
-          class="suggestion-item"
-          @click="selectStrategy(strategy)"
-        >
-          <div class="suggestion-content">
-            <div class="suggestion-name">{{ strategy.title }}</div>
-            <div class="suggestion-meta">{{ strategy.game_name }} · {{ strategy.author }}</div>
+
+      <!-- 搜索历史 -->
+      <div v-if="!searchQuery && searchHistory.length > 0" class="search-history">
+        <div class="history-header">
+          <span>搜索历史</span>
+          <el-button type="text" size="small" @click="clearHistory">清空</el-button>
+        </div>
+        <div class="history-list">
+          <div
+            v-for="(item, index) in searchHistory"
+            :key="index"
+            class="history-item"
+            @click="selectHistory(item)"
+          >
+            <el-icon><Clock /></el-icon>
+            <span>{{ item }}</span>
+            <el-button type="text" size="small" @click.stop="removeHistory(index)">
+              <el-icon><Close /></el-icon>
+            </el-button>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 搜索历史 -->
-    <div v-if="showSuggestions && searchHistory.length > 0 && !searchQuery" class="search-history">
-      <div class="history-header">
-        <span>搜索历史</span>
-        <el-button type="text" size="small" @click="clearHistory">清空</el-button>
-      </div>
-      <div class="history-list">
-        <div
-          v-for="(item, index) in searchHistory"
-          :key="index"
-          class="history-item"
-          @click="selectHistory(item)"
-        >
-          <el-icon><Clock /></el-icon>
-          <span>{{ item }}</span>
-          <el-button type="text" size="small" @click.stop="removeHistory(index)">
-            <el-icon><Close /></el-icon>
-          </el-button>
+      <!-- 热门搜索 -->
+      <div v-if="!searchQuery && hotTags.length > 0" class="hot-searches">
+        <div class="hot-header">
+          <span>热门搜索</span>
         </div>
-      </div>
-    </div>
-
-    <!-- 热门搜索 -->
-    <div v-if="showSuggestions && !searchQuery" class="hot-searches">
-      <div class="hot-header">
-        <span>热门搜索</span>
-      </div>
-      <div class="hot-tags">
-        <el-tag
-          v-for="tag in hotTags"
-          :key="tag"
-          size="small"
-          @click="selectTag(tag)"
-        >
-          {{ tag }}
-        </el-tag>
+        <div class="hot-tags">
+          <el-tag
+            v-for="tag in hotTags"
+            :key="tag"
+            size="small"
+            @click="selectTag(tag)"
+          >
+            {{ tag }}
+          </el-tag>
+        </div>
       </div>
     </div>
   </div>
@@ -119,7 +122,7 @@ const handleInput = async () => {
 
   try {
     // 调用后端搜索建议API
-    const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(searchQuery.value)}&limit=5`)
+    const response = await fetch(`http://localhost:3000/api/search/suggestions?q=${encodeURIComponent(searchQuery.value)}&limit=5`)
     const data = await response.json()
     
     if (data.games) {
@@ -140,7 +143,7 @@ const handleInput = async () => {
 // 获取热门搜索标签
 const fetchHotSearches = async () => {
   try {
-    const response = await fetch('/api/search/hot?limit=10')
+    const response = await fetch('http://localhost:3000/api/search/hot?limit=10')
     const data = await response.json()
     
     if (data.hot_searches && data.hot_searches.length > 0) {
@@ -181,7 +184,7 @@ const selectGame = (game) => {
 const selectStrategy = (strategy) => {
   searchQuery.value = strategy.title
   addToHistory(strategy.title)
-  router.push(`/strategies/${strategy.id}`)
+  router.push(`/strategy/${strategy.id}`)
   showSuggestions.value = false
 }
 

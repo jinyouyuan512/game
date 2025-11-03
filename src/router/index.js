@@ -27,7 +27,22 @@ const routes = [
     path: '/strategies/:id',
     name: 'strategy-detail',
     component: StrategyDetailView,
-    props: true
+    props: true,
+    meta: {
+      title: '游戏攻略详情',
+      keepAlive: false // 禁用keepAlive，确保页面切换时组件完全重建
+    }
+  },
+  // 攻略详情页面 - 兼容性路由
+  {
+    path: '/strategy/:id',
+    name: 'strategy-detail-alt',
+    component: StrategyDetailView,
+    props: true,
+    meta: {
+      title: '游戏攻略详情',
+      keepAlive: false // 禁用keepAlive，确保页面切换时组件完全重建
+    }
   },
   // 社区相关路由
   {
@@ -47,6 +62,15 @@ const routes = [
     component: () => import('../views/CreatePost.vue'),
     meta: {
       title: '发布帖子',
+      requiresAuth: true
+    }
+  },
+  // 攻略相关路由
+  {
+    path: '/add-strategy',
+    name: 'AddStrategy',
+    component: () => import('../views/AddStrategy.vue'),
+    meta: {
       requiresAuth: true
     }
   },

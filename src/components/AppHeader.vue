@@ -2,7 +2,7 @@
   <header class="app-header" :class="{ 'scrolled': isScrolled }">
     <div class="header-container">
       <!-- Logo 和品牌 -->
-      <div class="header-brand animate-fade-in" @click="goHome">
+      <div class="header-brand animate-fade-in" @click.stop="goHome">
         <div class="logo">
           <el-icon size="32"><Trophy /></el-icon>
         </div>
@@ -44,6 +44,10 @@
             <el-menu-item index="/friends">
               <el-icon><User /></el-icon>
               <span>好友系统</span>
+            </el-menu-item>
+            <el-menu-item index="/add-strategy" v-if="isLoggedIn">
+              <el-icon><DocumentAdd /></el-icon>
+              <span>提交攻略</span>
             </el-menu-item>
           </el-sub-menu>
         </el-menu>
@@ -180,7 +184,7 @@
     >
       <div class="mobile-menu" style="display: flex; flex-direction: column; height: 100%;">
         <!-- 移动端品牌区域 -->
-        <div class="mobile-brand enhanced-brand">
+        <div class="mobile-brand enhanced-brand" @click.stop="goHome">
           <div class="logo">
             <el-icon size="24"><Trophy /></el-icon>
           </div>
@@ -241,6 +245,10 @@
               text-color="white"
               active-text-color="#00d4ff"
             >
+              <el-menu-item index="/add-strategy" v-if="isLoggedIn" @click="handleMobileMenuSelect('/add-strategy')">
+                <el-icon><DocumentAdd /></el-icon>
+                <span>提交攻略</span>
+              </el-menu-item>
               <el-menu-item index="/community" @click="handleMobileMenuSelect('/community')">
                 <el-icon><ChatRound /></el-icon>
                 <span>社区</span>
@@ -496,7 +504,7 @@ import {
   ChatRound,
   Close
 } from '@element-plus/icons-vue'
-import { Search } from '@element-plus/icons-vue'
+import { Search, DocumentAdd } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -605,7 +613,20 @@ const handleScroll = () => {
 }
 
 const goHome = () => {
-  router.push('/')
+  console.log('🏠 点击游戏攻略站，准备跳转到首页')
+  
+  // 确保清除任何搜索状态
+  searchQuery.value = ''
+  
+  // 关闭移动端菜单（如果打开的话）
+  showMobileMenu.value = false
+  // 发出事件通知父组件
+  emit('update:searchQuery', '')
+  
+  // 最简单直接的方式：使用window.location.href强制跳转到首页
+  // 这种方式会完全重新加载页面，确保所有状态都被重置
+  console.log('🔄 使用window.location.href强制跳转')
+  window.location.href = window.location.origin + '/'
 }
 
 const handleMenuSelect = (index) => {
@@ -1002,6 +1023,7 @@ onUnmounted(() => {
 .header-nav {
   flex: 1;
   max-width: 400px;
+  min-width: 0; /* 允许在窄屏下收缩，避免溢出 */
 }
 
 .main-menu {
@@ -1060,6 +1082,7 @@ onUnmounted(() => {
   max-width: 300px;
   min-width: 200px;
   position: relative;
+  min-width: 0; /* 允许在窄屏下收缩，避免溢出 */
 }
 
 .search-input {
@@ -2103,6 +2126,26 @@ onUnmounted(() => {
   
   .username {
     display: none;
+  }
+
+  /* 缩小按钮与间距，避免操作区溢出 */
+  .header-actions {
+    gap: 8px;
+  }
+  .action-button,
+  .theme-toggle,
+  .notification-btn,
+  .mobile-menu-btn,
+  .mobile-search-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+  
+  /* 收敛整体间距，提升可用空间 */
+  .header-container {
+    gap: 12px;
+    padding: 0 1.25rem;
   }
 }
 

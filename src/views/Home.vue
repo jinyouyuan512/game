@@ -263,13 +263,24 @@ const handleTestApiConnection = async () => {
 
 // 组件挂载时获取数据
 onMounted(async () => {
-  await gameStore.fetchGames()
-  // 获取一些最新攻略用于首页展示
-  if (gameStore.games.length > 0) {
-    await gameStore.fetchGameStrategies(gameStore.games[0].id)
-  } else {
-    // 如果没有游戏，获取一些攻略
-    await gameStore.fetchStrategies()
+  try {
+    console.log('🏠 Home组件开始加载数据...')
+    await gameStore.fetchGames()
+    console.log('✅ 游戏数据加载完成，游戏数量:', gameStore.games.length)
+    
+    // 获取一些最新攻略用于首页展示
+    if (gameStore.games.length > 0) {
+      await gameStore.fetchGameStrategies(gameStore.games[0].id)
+      console.log('✅ 攻略数据加载完成')
+    } else {
+      // 如果没有游戏，获取一些攻略
+      console.log('⚠️ 没有游戏数据，尝试直接获取攻略')
+      await gameStore.fetchStrategies()
+    }
+    console.log('🎉 Home组件数据加载完成')
+  } catch (error) {
+    console.error('❌ Home组件数据加载失败:', error)
+    // 即使数据加载失败，也要确保页面能正常显示
   }
 })
 </script>

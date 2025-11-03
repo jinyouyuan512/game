@@ -452,7 +452,7 @@ const submitForm = async () => {
         }
         
         ElMessage.success('攻略提交成功！');
-        router.push(`/game/${strategyForm.game_id}`);
+        router.push('/');
       } catch (error) {
         // 根据错误类型显示不同的提示
         if (error.type === 'unauthorized') {
