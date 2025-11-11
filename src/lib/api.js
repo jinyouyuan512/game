@@ -1,5 +1,7 @@
 // 本地API客户端
-const API_BASE_URL = 'http://localhost:3000' // 直接使用后端服务器地址，不依赖代理
+const API_BASE_URL = 'http://localhost:3000' // 后端服务器地址
+// 使用相对路径作为备选方案，让开发服务器代理处理
+const API_BASE_URL_RELATIVE = '/api'
 
 // 测试API连接
 export const testApiConnection = async () => {
@@ -106,11 +108,15 @@ export const testApiConnection = async () => {
 
 class ApiClient {
   constructor() {
-    this.baseURL = API_BASE_URL
+    // 使用相对路径，让Vite开发服务器代理处理API请求，避免CORS问题
+    this.baseURL = API_BASE_URL_RELATIVE
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`
+    // 使用相对路径构建URL，让Vite开发服务器代理处理
+    // 如果endpoint已经以/api开头，就不再添加前缀
+    const normalizedEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`
+    const url = normalizedEndpoint
     console.log('===== API请求开始 =====')
     console.log('API请求URL:', url)
     console.log('请求方法:', options.method || 'GET')
@@ -203,15 +209,16 @@ class ApiClient {
       console.error('错误详情:', error.message)
       console.error('错误类型:', error.type)
       
-      // 如果是网络错误，尝试使用IP地址
-      if (error.message.includes('Failed to fetch') && url.includes('localhost')) {
-        console.log('尝试使用IP地址重试...')
-        const ipUrl = url.replace('localhost', '127.0.0.1')
+      // 如果是网络错误，尝试使用绝对路径
+      if (error.message.includes('Failed to fetch')) {
+        console.log('网络请求失败，尝试使用绝对路径...')
+        const absoluteEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`
+        const absoluteUrl = `${API_BASE_URL}${absoluteEndpoint}`
         config.mode = 'cors'
         
         try {
-          const response = await fetch(ipUrl, config)
-          console.log('IP地址API响应状态:', response.status, response.statusText)
+          const response = await fetch(absoluteUrl, config)
+          console.log('绝对路径API响应状态:', response.status, response.statusText)
           
           const contentType = response.headers.get('content-type')
           

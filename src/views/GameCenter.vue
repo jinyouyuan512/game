@@ -71,6 +71,10 @@
         <!-- 筛选结果统计 -->
         <div v-if="!loading && totalGames > 0" class="filter-stats">
           <span>共找到 {{ totalGames }} 款游戏</span>
+          <el-button type="primary" size="small" @click="refreshGames" :loading="loading">
+            <el-icon><Refresh /></el-icon>
+            刷新
+          </el-button>
           <span v-if="selectedCategory" class="filter-tag">
             分类: {{ categories.find(c => c.value === selectedCategory)?.label }}
             <el-button size="small" text @click="selectedCategory = ''; handleCategoryChange()">
@@ -226,7 +230,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useGameStore } from '../stores/game'
-import { Plus, Search, View, Document, Star } from '@element-plus/icons-vue'
+import { Plus, Search, View, Document, Star, Refresh, Close } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -404,8 +408,24 @@ watch(() => route.query, (newQuery) => {
 
 // 组件挂载时获取数据
 onMounted(async () => {
+  console.log('GameCenter组件挂载，开始加载游戏数据...')
   await loadGames()
-});</script>
+  
+  // 添加额外的检查，如果数据为空，尝试重新加载
+  setTimeout(() => {
+    if (filteredGames.value.length === 0) {
+      console.warn('游戏列表为空，尝试重新加载...')
+      loadGames()
+    }
+  }, 1000)
+});
+
+// 添加刷新游戏数据的方法
+const refreshGames = async () => {
+  console.log('手动刷新游戏数据...')
+  await loadGames()
+  console.log('刷新完成，当前游戏数量:', filteredGames.value.length)
+};</script>
 
 <style scoped>
 .game-center {
